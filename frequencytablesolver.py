@@ -9,7 +9,7 @@ class FrequencyTableSolver():
 
     def __init__(self, input_file_name, output_file_name):
 
-        #np.seterr(all='raise')
+        np.seterr(all='raise')
         self.iteration = None
         self.input_file_name = input_file_name
         self.output_file_name = output_file_name
@@ -34,7 +34,7 @@ class FrequencyTableSolver():
         print(f'rm: {self.rm}')
         print(f'cm: {self.cm}')
         print(f'a: {self.a}')
-        print(f'gof: {self.evaluate()}')
+        print(f'error: {self.evaluate()}')
 
 
     def read_csv_data(self, file_name):
@@ -79,14 +79,14 @@ class FrequencyTableSolver():
         self.cx = self.cx - s
 
 
-    def initialize_starting_point(self, tries=2, iterations=2):
-        best_gof = None
+    def initialize_starting_point(self, tries=20, iterations=2):
+        best_error = None
         best_solution = None
         for random_start in range(tries):
             self.get_random_starting_point()
             self.show_state(f'Random start: {random_start}')
-            gof = self.solve(iterations=iterations)
-            if best_gof is None or gof < best_gof:
+            error = self.solve(iterations=iterations)
+            if best_error is None or error < best_error:
                 best_solution = self.save_solution()
                 #self.file_best_parameters(best_solution)
 
@@ -140,6 +140,7 @@ class FrequencyTableSolver():
     def update_parameter_list(self):
         # Shuffle the parameters so the solving proceeds in random order
         random.shuffle(self.parameters)
+
 
     # Methods to step each parameter type down the goodness-of-fit gradient
 
@@ -227,8 +228,8 @@ class FrequencyTableSolver():
     def initialize_deltas(self):
         self.rx_delta = np.zeros_like(self.rx) + .1
         self.cx_delta = np.zeros_like(self.cx) + .1
-        self.rm_delta = np.ones_like(self.rm) *1.1
-        self.cm_delta = np.ones_like(self.cm) *1.1
+        self.rm_delta = np.ones_like(self.rm) * 1.1
+        self.cm_delta = np.ones_like(self.cm) * 1.1
         self.a_delta = .001
 
 
@@ -242,17 +243,21 @@ class FrequencyTableSolver():
             for parameter in self.parameters:
                 parameter[0](parameter[1])      # call the parameter stepping function
             self.error_list.append([self.iteration, self.evaluate()])
-            if (self.iteration % 100) == 0:
-                self.show_state(f'Iteration: {self.iteration}')
-                print(self.error_list[-1], time.ctime())
-            print('end iteration:', self.evaluate())
             t_end = time.time()
-            print(f'iteration time: {t_end - t_start}')
+            if (self.iteration % 100) == 0:
+                self.show_state(f'Iteration: {self.iteration} time:{t_end-t_start}')
+
 
 if __name__ == "__main__":
+
     file_name = "degree by family income_6x12.csv"
+
     solver = FrequencyTableSolver(file_name, 'output.csv')
     solver.show_state('STARTING POINT SOLUTION')
+
     solver.solve(iterations=10000)
     solver.show_state('ENDING POINT SOLUTION')
+
     print(f'error_list: {solver.error_list}')
+    print(f'data: {solver.data}')
+    print(f'fitted_frequencies: {solver.fitted_frequencies}')
