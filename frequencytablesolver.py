@@ -9,28 +9,34 @@ class FrequencyTableSolver():
 
     def __init__(self, input_file_name, output_file_name):
 
-        np.seterr(all='raise')
-        self.iteration = 0
+        #np.seterr(all='raise')
+        self.iteration = None
         self.input_file_name = input_file_name
         self.output_file_name = output_file_name
         self.read_csv_data(self.input_file_name)
         self.nrow, self.ncol = np.shape(self.data)
 
+        print(f'row_labels: {self.row_labels}')
+        print(f'column_labels: {self.column_labels}')
+        print(f'data: {self.data}')
+
         self.initialize_parameter_list()
-        self.get_startup_state()
-        self.initialize_random_starting_point()
+        #self.get_startup_state()
+        self.initialize_starting_point()
+        self.show_state('starting point')
 
 
     def show_state(self, tag):
+        print()
+        print(15*'=')
         print(f'Solver status at {tag} {datetime.now()}')
         print(f'iteration: {self.iteration}')
-        print(f'row_labels: {self.a}')
-        print(f'column_labels: {self.a}')
         print(f'rx: {self.rx}')
         print(f'cx: {self.cx}')
         print(f'rm: {self.rm}')
         print(f'cm: {self.cm}')
         print(f'a: {self.a}')
+        print(f'gof: {self.evaluate()}')
 
 
     def read_csv_data(self, file_name):
@@ -39,14 +45,12 @@ class FrequencyTableSolver():
         lines = text.split('\n')                    #split file in to lines separated by the invisible character \r
         lines = [line.split(',') for line in lines] # convert each line to a list of its column values
         input_as_array = np.array(lines)            #convert to np array format
-        #print('input:', input_as_array)
         self.column_labels = input_as_array[0,1:]   #first column of array (from second row to end)
         self.row_labels = input_as_array[1:,0]            #first row of array (from second column to endd)
         self.data = input_as_array[1:, 1:].astype("float")
-        #print("shape of data at line e18", np.shape(self.data), "len rlab", len(self.row_labels), "len clab", len(self.column_labels))
 
 
-    def get_startup_state(self):
+    def get_random_starting_point(self):
         # Multipliers
         # Use the row and column factors of the standard zero correlation model for tabular data
         self.total = np.sum(self.data)
@@ -67,25 +71,6 @@ class FrequencyTableSolver():
         self.standardize_multipliers()
 
 
-    def initialize_random_starting_point(self, iterations=20):
-        best_gof = None
-        best_solution = None
-        for random_start in range(iterations):
-            initial_parameters  = self.get_startup_state()
-            gof = self.solve(iterations = 200)
-            if best_gof is None or gof < best_gof:
-                best_solution = self.save_solution()
-                #self.file_best_parameters(best_solution)
-
-        #Continue from the best of the semi_starts.   Add lots of iterations.
-        self.restore_solution(best_solution)
-
-    def save_solution(self):
-        return (self.rx, self.cx, self.rm, self.cm, self.a)
-
-    def restore_solution(self, solution):
-       self.rx, self.cx, self.rm, self.cm, self.a = solution
-
     def standardize_multipliers(self):
         #standardize row multipliers and column multipliers to a common geometric mean
         row_geomean = self.rm.prod()**(1 / self.nrow)
@@ -100,21 +85,40 @@ class FrequencyTableSolver():
         self.cx = self.cx - s
 
 
+    def initialize_starting_point(self, tries=2, iterations=2):
+        best_gof = None
+        best_solution = None
+        for random_start in range(tries):
+            self.get_random_starting_point()
+            self.show_state(f'Random start: {random_start}')
+            gof = self.solve(iterations=iterations)
+            if best_gof is None or gof < best_gof:
+                best_solution = self.save_solution()
+                #self.file_best_parameters(best_solution)
+
+        #Continue from the best of the semi_starts.   Add lots of iterations.
+        if best_solution is None: raise('no starting point')
+        self.restore_solution(best_solution)
+
+
+    def save_solution(self):
+        return (self.rx, self.cx, self.rm, self.cm, self.a)
+
+
+    def restore_solution(self, solution):
+       self.rx, self.cx, self.rm, self.cm, self.a = solution
+
+
+    def get_fitted_frequencies(self):            #Implement Equation 1 from Prologue
+        one_dimensional_distances = np.absolute(np.subtract.outer(self.rx, self.cx))
+        products_of_multipliers = (np.outer(self.rm, self.cm))
+        self.fitted_frequencies = products_of_multipliers * 2**(-(one_dimensional_distances**self.a))
+
+
     def evaluate(self):
-        # Chi-square
-        print(f'data: {self.data}')
-        print(f'zcm: {self.zero_correlation_model}')
-        return np.sum(((self.data - self.zero_correlation_model)**2) / self.data)
-
-
-    #def get_chi_square(self):
-    #    # Chi-square
-    #    return np.sum(((self.data - self.zero_correlation_model)**2) / self.data)
-
-
-    def get_fitted(self):            #Implement Equation 1 from Prologue
-        self.one_dimensional_distances  = np.absolute(np.subtract.outer(self.rx, self.cx))
-        self.products_of_multipliers = (np.outer(self.rm, self.cm))
+        # Chi-square against zero correlation model
+        self.get_fitted_frequencies()
+        return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
 
 
     def file_best_parameters(self):
@@ -238,21 +242,23 @@ class FrequencyTableSolver():
         self.initialize_deltas()
         self.error_list = []
         for self.iteration in range(iterations):
-            self.update_parameter_list()
+            t_start = time.time()
             self.minimum_error = self.evaluate()
+            self.update_parameter_list()
             for parameter in self.parameters:
                 parameter[0](parameter[1])      # call the parameter stepping function
-                #print('evaluate:', self.evaluate())
-                self.error_list.append([self.iteration, self.evaluate()])
-                if (self.iteration % 100) == 0:
-                    self.print(f'Iteration: {self.iteration}')
-                    print(self.error_list[-1], time.ctime())
+            self.error_list.append([self.iteration, self.evaluate()])
+            if (self.iteration % 100) == 0:
+                self.show_state(f'Iteration: {self.iteration}')
+                print(self.error_list[-1], time.ctime())
             print('end iteration:', self.evaluate())
+            t_end = time.time()
+            print(f'iteration time: {t_end - t_start}')
 
 if __name__ == "__main__":
     file_name = "degree by family income_6x12.csv"
     solver = FrequencyTableSolver(file_name, 'output.csv')
     solver.show_state('STARTING POINT SOLUTION')
-    solver.solve(iterations=1)
+    solver.solve(iterations=10)
     solver.show_state('ENDING POINT SOLUTION')
     print(f'error_list: {solver.error_list}')
