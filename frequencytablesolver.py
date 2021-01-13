@@ -10,7 +10,13 @@ class FrequencyTableSolver():
     def __init__(self, input_file_name, output_file_name):
 
         np.seterr(all='raise')
+        np.set_printoptions(precision=5)
+
         self.iteration = None
+        self.minimum_error = 0
+        self.one_dimensional_distances = None
+        self.products_of_multipliers = None
+
         self.input_file_name = input_file_name
         self.output_file_name = output_file_name
         self.read_csv_data(self.input_file_name)
@@ -33,8 +39,8 @@ class FrequencyTableSolver():
         print(f'cx: {self.cx}')
         print(f'rm: {self.rm}')
         print(f'cm: {self.cm}')
-        print(f'a: {self.a}')
-        print(f'error: {self.evaluate()}')
+        print(f'a: {self.a:.5f}')
+        print(f'error: {self.minimum_error:.5f}')
         self.save_solution_to_file()
 
 
@@ -48,9 +54,11 @@ class FrequencyTableSolver():
         self.row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
         self.data = input_as_array[1:, 1:].astype("float")
 
+
     def save_solution_to_file(self):
-        with open(self.output_file_name, 'w') as file:
+        with open(self.output_file_name, 'a') as file:
             file.write(json.dumps({
+                'iteration': self.iteration,
                 'row_labels': self.row_labels.tolist(),
                 'column_labels': self.column_labels.tolist(),
                 'rx': self.rx.tolist(),
@@ -60,7 +68,7 @@ class FrequencyTableSolver():
                 'error': self.evaluate(),
                 'data': self.data.tolist(),
                 'fitted_frequencies': self.fitted_frequencies.tolist()
-            }))
+            }) + '\n')
 
 
     def get_random_starting_point(self):
@@ -103,7 +111,6 @@ class FrequencyTableSolver():
             error = self.solve(iterations=iterations)
             if best_error is None or error < best_error:
                 best_solution = self.save_solution()
-                #self.file_best_parameters(best_solution)
 
         #Continue from the best of the semi_starts.   Add lots of iterations.
         if best_solution is None: raise('no starting point')
@@ -113,20 +120,27 @@ class FrequencyTableSolver():
     def save_solution(self):
         return (self.rx, self.cx, self.rm, self.cm, self.a)
 
+
     def restore_solution(self, solution):
        self.rx, self.cx, self.rm, self.cm, self.a = solution
 
 
-    def get_fitted_frequencies(self):            #Implement Equation 1 from Prologue
+    def evaluate_xx(self):
+        # Chi-square against zero correlation model
         one_dimensional_distances = np.absolute(np.subtract.outer(self.rx, self.cx))
         products_of_multipliers = (np.outer(self.rm, self.cm))
         self.fitted_frequencies = products_of_multipliers * 2**(-(one_dimensional_distances**self.a))
-
-
-    def evaluate(self):
-        # Chi-square against zero correlation model
-        self.get_fitted_frequencies()
         return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
+
+    def evaluate(self, hint=''):
+        # Chi-square against zero correlation model
+        if self.one_dimensional_distances is None or (hint == 'rx' or hint == 'cx'):
+            self.one_dimensional_distances = np.absolute(np.subtract.outer(self.rx, self.cx))
+        if self.products_of_multipliers is None or (hint == 'rm' or hint == 'cm'):
+            self.products_of_multipliers = (np.outer(self.rm, self.cm))
+        self.fitted_frequencies = self.products_of_multipliers * 2**(-(self.one_dimensional_distances**self.a))
+        return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
+
 
 
     # Solver optimization implementation
@@ -134,11 +148,11 @@ class FrequencyTableSolver():
     def initialize_parameter_list(self):
         # Parameters are adjusted in random order, once per iteration
         # Build a list with one entry for each parameter; we shuffle the array below
-        param_rx = [(self.step_row_coordinate, i) for i in range(self.nrow)]       # row coordinate i
-        param_rm = [(self.step_row_multiplier, i) for i in range(self.nrow)]       # row multiplier i
-        param_cx = [(self.step_column_coordinate, i) for i in range(self.ncol)]    # column ccoordinate i
-        param_cm = [(self.step_column_multiplier, i) for i in range(self.ncol)]    # column multiplier i
-        param_a  = [(self.step_a, 0)]                                              # attenuation and two dummy values
+        param_rx = [(self.step_row_coordinate, i, 'rx') for i in range(self.nrow)]       # row coordinate i
+        param_rm = [(self.step_row_multiplier, i, 'rm') for i in range(self.nrow)]       # row multiplier i
+        param_cx = [(self.step_column_coordinate, i, 'cx') for i in range(self.ncol)]    # column ccoordinate i
+        param_cm = [(self.step_column_multiplier, i, 'cm') for i in range(self.ncol)]    # column multiplier i
+        param_a  = [(self.step_a, 0, 'a')]                                               # attenuation and two dummy values
         self.parameters = param_rx + param_rm + param_cx + param_cm + param_a
 
     def update_parameter_list(self):
@@ -150,13 +164,13 @@ class FrequencyTableSolver():
 
     def step_row_multiplier(self, i):
         self.rm[i] *= self.rm_delta[i]
-        right_error = self.evaluate()
+        right_error = self.evaluate(hint='rm')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.rm_delta[i] *= 1.01
         else:
             self.rm[i] /= self.rm_delta[i]**2
-            left_error = self.evaluate()
+            left_error = self.evaluate(hint='rm')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.rm_delta[i] /= 1.01    
@@ -166,13 +180,13 @@ class FrequencyTableSolver():
 
     def step_column_multiplier(self, i):
         self.cm[i] *= self.cm_delta[i]
-        right_error = self.evaluate()
+        right_error = self.evaluate(hint='cm')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.cm_delta[i] *= 1.01        
         else:
             self.cm[i] /= self.cm_delta[i]**2
-            left_error = self.evaluate()
+            left_error = self.evaluate(hint='cm')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.cm_delta[i] /= 1.01
@@ -182,13 +196,13 @@ class FrequencyTableSolver():
 
     def step_row_coordinate(self, i):
         self.rx[i] += self.rx_delta[i]
-        right_error = self.evaluate()
+        right_error = self.evaluate(hint='rx')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.rx_delta[i] *= 1.1
         else:
             self.rx[i] -= 2 * self.rx_delta[i]
-            left_error = self.evaluate()
+            left_error = self.evaluate(hint='rx')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.rx_delta[i] *= -1.1
@@ -198,13 +212,13 @@ class FrequencyTableSolver():
 
     def step_column_coordinate(self, i):
         self.cx[i] += self.cx_delta[i]
-        right_error = self.evaluate()
+        right_error = self.evaluate(hint='cx')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.cx_delta[i] *= 1.1        
         else:
             self.cx[i] -= 2 * self.cx_delta[i]
-            left_error = self.evaluate()
+            left_error = self.evaluate(hint='cx')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.cx_delta[i] *= -1.1
@@ -214,13 +228,13 @@ class FrequencyTableSolver():
 
     def step_a(self, i):
         self.a += self.a_delta
-        right_error = self.evaluate()
+        right_error = self.evaluate(hint='a')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.a_delta += .0001       
         else:
             self.a -= 2 * self.a_delta
-            left_error = self.evaluate()
+            left_error = self.evaluate(hint='a')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.a_delta = - (self.a_delta +.0001)  
@@ -246,7 +260,7 @@ class FrequencyTableSolver():
             self.update_parameter_list()
             for parameter in self.parameters:
                 parameter[0](parameter[1])      # call the parameter stepping function
-            self.error_list.append([self.iteration, self.evaluate()])
+            self.error_list.append([self.iteration, self.minimum_error])
             t_end = time.time()
             if (self.iteration % 1000) == 0:
                 self.show_state(f'Iteration: {self.iteration} dt:{t_end-t_start:.4f}')
@@ -259,7 +273,16 @@ if __name__ == "__main__":
     solver = FrequencyTableSolver(file_name, 'output.csv')
     solver.show_state('STARTING POINT SOLUTION')
 
-    solver.solve(iterations=10000)
+    import cProfile, io, pstats
+    pr = cProfile.Profile()
+    pr.enable()
+    solver.solve(iterations=1000)
+    pr.disable()
+    s = io.StringIO()
+    ps = pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE)
+    ps.print_stats()
+    print(s.getvalue())
+
     solver.show_state('ENDING POINT SOLUTION')
 
     print(f'error_list: {solver.error_list}')
