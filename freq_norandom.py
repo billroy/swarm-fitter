@@ -2,11 +2,16 @@ from frequencytablesolver import FrequencyTableSolver
 
 class FrequencyTableSolverWithoutShuffle(FrequencyTableSolver):
 
-    # The base class FrequencyTableSolver shuffles the parameters
-    # This replacement for the parameter list update function simply does nothing,
-    # so the parameters are stepped in the same order every iteration
+    # The base class method FrequencyTableSolver::update_parameter_list()
+    # shuffles the parameter order each iteration to avoid local minima.
+    #
+    # For experimentation, this replacement for update_parameter_list
+    # simply does nothing, so the parameters are stepped in the same order 
+    # every iteration.
+    #
     def update_parameter_list(self):
         pass
+
 
 if __name__ == "__main__":
 

@@ -35,6 +35,7 @@ class FrequencyTableSolver():
         print(f'cm: {self.cm}')
         print(f'a: {self.a}')
         print(f'error: {self.evaluate()}')
+        self.save_solution_to_file()
 
 
     def read_csv_data(self, file_name):
@@ -46,6 +47,20 @@ class FrequencyTableSolver():
         self.column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
         self.row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
         self.data = input_as_array[1:, 1:].astype("float")
+
+    def save_solution_to_file(self):
+        with open(self.output_file_name, 'w') as file:
+            file.write(json.dumps({
+                'row_labels': self.row_labels.tolist(),
+                'column_labels': self.column_labels.tolist(),
+                'rx': self.rx.tolist(),
+                'cx': self.cx.tolist(),
+                'rm': self.rm.tolist(),
+                'a': self.a,
+                'error': self.evaluate(),
+                'data': self.data.tolist(),
+                'fitted_frequencies': self.fitted_frequencies.tolist()
+            }))
 
 
     def get_random_starting_point(self):
@@ -98,7 +113,6 @@ class FrequencyTableSolver():
     def save_solution(self):
         return (self.rx, self.cx, self.rm, self.cm, self.a)
 
-
     def restore_solution(self, solution):
        self.rx, self.cx, self.rm, self.cm, self.a = solution
 
@@ -113,16 +127,6 @@ class FrequencyTableSolver():
         # Chi-square against zero correlation model
         self.get_fitted_frequencies()
         return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
-
-
-    def file_best_parameters(self):
-        pass
-
-
-    def save_output(self):
-        print("Save output TBI")
-        print(json.dumps(self))
-        return
 
 
     # Solver optimization implementation
@@ -244,8 +248,8 @@ class FrequencyTableSolver():
                 parameter[0](parameter[1])      # call the parameter stepping function
             self.error_list.append([self.iteration, self.evaluate()])
             t_end = time.time()
-            if (self.iteration % 100) == 0:
-                self.show_state(f'Iteration: {self.iteration} time:{t_end-t_start}')
+            if (self.iteration % 1000) == 0:
+                self.show_state(f'Iteration: {self.iteration} dt:{t_end-t_start:.4f}')
 
 
 if __name__ == "__main__":
