@@ -21,9 +21,7 @@ class FrequencyTableSolver():
         print(f'data: {self.data}')
 
         self.initialize_parameter_list()
-        #self.get_startup_state()
         self.initialize_starting_point()
-        self.show_state('starting point')
 
 
     def show_state(self, tag):
@@ -42,11 +40,11 @@ class FrequencyTableSolver():
     def read_csv_data(self, file_name):
         with open(file_name, 'r') as infile:
             text = infile.read()
-        lines = text.split('\n')                    #split file in to lines separated by the invisible character \r
+        lines = text.split('\n')                    # split file in to lines separated by the invisible character \r
         lines = [line.split(',') for line in lines] # convert each line to a list of its column values
-        input_as_array = np.array(lines)            #convert to np array format
-        self.column_labels = input_as_array[0,1:]   #first column of array (from second row to end)
-        self.row_labels = input_as_array[1:,0]            #first row of array (from second column to endd)
+        input_as_array = np.array(lines)            # convert to np array format
+        self.column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
+        self.row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
         self.data = input_as_array[1:, 1:].astype("float")
 
 
@@ -57,16 +55,12 @@ class FrequencyTableSolver():
         print("total", self.total)
         self.rm = np.sum(self.data, 1) / self.total**.5
         self.cm = np.sum(self.data, 0) / self.total **.5
-        #print("row_multipliers", self.rm)
-        #print("col_multipliers", self.cm)
         self.zero_correlation_model = np.outer(self.rm, self.cm)
-        #self.chi_square = self.evaluate()
 
-        # Coordinates
-        #    Use random coordinates in the range + or = 1
+        # Coordinates: Use random coordinates in the range + or = 1
         self.rx = 2.*(np.random.rand(self.nrow) - .5)
         self.cx = 2.*(np.random.rand(self.ncol) - .5)
-        self.a = 2  #Initial estimate of attenuation
+        self.a = 2  # Initial estimate of attenuation
 
         self.standardize_multipliers()
 
@@ -259,6 +253,6 @@ if __name__ == "__main__":
     file_name = "degree by family income_6x12.csv"
     solver = FrequencyTableSolver(file_name, 'output.csv')
     solver.show_state('STARTING POINT SOLUTION')
-    solver.solve(iterations=10)
+    solver.solve(iterations=10000)
     solver.show_state('ENDING POINT SOLUTION')
     print(f'error_list: {solver.error_list}')
