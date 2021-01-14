@@ -1,6 +1,7 @@
  # Simple Solver for a Small Rectangular Table of Frequencies in .csv format, using Chi-Square as the Objective Fiunction
 from datetime import datetime
 import json
+import multiprocessing as mp
 import numpy as np
 import random
 import time
@@ -125,14 +126,15 @@ class FrequencyTableSolver():
        self.rx, self.cx, self.rm, self.cm, self.a = solution
 
 
-    def evaluate_xx(self):
+    def evaluate(self, hint=''):
         # Chi-square against zero correlation model
         one_dimensional_distances = np.absolute(np.subtract.outer(self.rx, self.cx))
         products_of_multipliers = (np.outer(self.rm, self.cm))
         self.fitted_frequencies = products_of_multipliers * 2**(-(one_dimensional_distances**self.a))
         return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
 
-    def evaluate(self, hint=''):
+
+    def evaluate_with_hint(self, hint=''):
         # Chi-square against zero correlation model
         if self.one_dimensional_distances is None or (hint == 'rx' or hint == 'cx'):
             self.one_dimensional_distances = np.absolute(np.subtract.outer(self.rx, self.cx))
@@ -148,12 +150,13 @@ class FrequencyTableSolver():
     def initialize_parameter_list(self):
         # Parameters are adjusted in random order, once per iteration
         # Build a list with one entry for each parameter; we shuffle the array below
-        param_rx = [(self.step_row_coordinate, i, 'rx') for i in range(self.nrow)]       # row coordinate i
-        param_rm = [(self.step_row_multiplier, i, 'rm') for i in range(self.nrow)]       # row multiplier i
-        param_cx = [(self.step_column_coordinate, i, 'cx') for i in range(self.ncol)]    # column ccoordinate i
-        param_cm = [(self.step_column_multiplier, i, 'cm') for i in range(self.ncol)]    # column multiplier i
-        param_a  = [(self.step_a, 0, 'a')]                                               # attenuation and two dummy values
+        param_rx = [(self.twiddle_row_coordinate, i, 'rx') for i in range(self.nrow)]       # row coordinate i
+        param_rm = [(self.twiddle_row_multiplier, i, 'rm') for i in range(self.nrow)]       # row multiplier i
+        param_cx = [(self.twiddle_column_coordinate, i, 'cx') for i in range(self.ncol)]    # column ccoordinate i
+        param_cm = [(self.twiddle_column_multiplier, i, 'cm') for i in range(self.ncol)]    # column multiplier i
+        param_a  = [(self.twiddle_a, 0, 'a')]                                               # attenuation and two dummy values
         self.parameters = param_rx + param_rm + param_cx + param_cm + param_a
+
 
     def update_parameter_list(self):
         # Shuffle the parameters so the solving proceeds in random order
@@ -162,7 +165,7 @@ class FrequencyTableSolver():
 
     # Methods to step each parameter type down the goodness-of-fit gradient
 
-    def step_row_multiplier(self, i):
+    def twiddle_row_multiplier(self, i):
         self.rm[i] *= self.rm_delta[i]
         right_error = self.evaluate(hint='rm')
         if right_error < self.minimum_error:
@@ -177,8 +180,9 @@ class FrequencyTableSolver():
             else:
                 self.rm[i] *= self.rm_delta[i]
                 self.rm_delta[i] **= .5
+        return(('rm', i, self.rm[i], self.rm_delta[i]))
 
-    def step_column_multiplier(self, i):
+    def twiddle_column_multiplier(self, i):
         self.cm[i] *= self.cm_delta[i]
         right_error = self.evaluate(hint='cm')
         if right_error < self.minimum_error:
@@ -193,8 +197,9 @@ class FrequencyTableSolver():
             else:
                 self.cm[i] *= self.cm_delta[i]
                 self.cm_delta[i] **= .5
+        return(('cm', i, self.cm[i], self.cm_delta[i]))
 
-    def step_row_coordinate(self, i):
+    def twiddle_row_coordinate(self, i):
         self.rx[i] += self.rx_delta[i]
         right_error = self.evaluate(hint='rx')
         if right_error < self.minimum_error:
@@ -209,24 +214,26 @@ class FrequencyTableSolver():
             else:
                 self.rx[i] += self.rx_delta[i]
                 self.rx_delta[i] *= .5
+        return(('rx', i, self.rx[i], self.rx_delta[i]))
 
-    def step_column_coordinate(self, i):
+    def twiddle_column_coordinate(self, i):
         self.cx[i] += self.cx_delta[i]
-        right_error = self.evaluate(hint='cx')
+        right_error = self.evaluate(hint='cxx')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.cx_delta[i] *= 1.1        
         else:
             self.cx[i] -= 2 * self.cx_delta[i]
-            left_error = self.evaluate(hint='cx')
+            left_error = self.evaluate(hint='cxx')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.cx_delta[i] *= -1.1
             else:
                 self.cx[i] += self.cx_delta[i]
                 self.cx_delta[i] *= .5
+        return(('cx', i, self.cx[i], self.cx_delta[i]))
 
-    def step_a(self, i):
+    def twiddle_a(self, i):
         self.a += self.a_delta
         right_error = self.evaluate(hint='a')
         if right_error < self.minimum_error:
@@ -241,6 +248,7 @@ class FrequencyTableSolver():
             else:
                 self.a = self.a + self.a_delta
                 self.a_delta += .0001
+        return(('a', i, self.a, self.a_delta))
 
 
     def initialize_deltas(self):
@@ -266,6 +274,52 @@ class FrequencyTableSolver():
                 self.show_state(f'Iteration: {self.iteration} dt:{t_end-t_start:.4f}')
 
 
+    def twiddle_one_parameter(self, parameter):
+        print('twiddle:', parameter[2], parameter[1])
+        return parameter[0](parameter[1])
+
+
+    def update_parameter(self, update):
+        if update[0] == 'rx':
+            self.rx[update[1]] = update[2]
+            self.rx_delta[update[1]] = update[3]
+        elif update[0] == 'cx':
+            self.cx[update[1]] = update[2]
+            self.cx_delta[update[1]] = update[3]
+        elif update[0] == 'rm':
+            self.rm[update[1]] = update[2]
+            self.rm_delta[update[1]] = update[3]
+        elif update[0] == 'cm':
+            self.cm[update[1]] = update[2]
+            self.cm_delta[update[1]] = update[3]
+        elif update[0] == 'a':
+            self.a = update[2]
+            self.a_delta = update[3]
+
+
+    def solve_parallel(self, iterations=1):
+        self.initialize_deltas()
+        self.error_list = []
+
+        for self.iteration in range(iterations):
+            t_start = time.time()
+            self.minimum_error = self.evaluate()
+            self.update_parameter_list()
+            pool = mp.Pool(mp.cpu_count())
+            #pool = mp.Pool(1)
+
+            results = pool.map_async(self.twiddle_one_parameter, [(parameter) for parameter in self.parameters]).get()
+            print('pool result:', results)
+            for result in results:
+                self.update_parameter(result)
+
+            self.error_list.append([self.iteration, self.minimum_error])
+            t_end = time.time()
+            if (self.iteration % 1) == 0:
+                self.show_state(f'Iteration: {self.iteration} dt:{t_end-t_start:.4f}')
+
+            pool.close()
+
 if __name__ == "__main__":
 
     file_name = "degree by family income_6x12.csv"
@@ -276,7 +330,7 @@ if __name__ == "__main__":
     import cProfile, io, pstats
     pr = cProfile.Profile()
     pr.enable()
-    solver.solve(iterations=1000)
+    solver.solve(iterations=10000)
     pr.disable()
     s = io.StringIO()
     ps = pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE)
