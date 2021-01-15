@@ -260,22 +260,24 @@ class FrequencyTableSolver():
 
 
     def solve(self, iterations=1):
+        self.t_solve_start = time.time()
         self.initialize_deltas()
         self.error_list = []
         for self.iteration in range(iterations):
-            t_start = time.time()
+            self.t_start = time.time()
             self.minimum_error = self.evaluate()
             self.update_parameter_list()
             for parameter in self.parameters:
                 parameter[0](parameter[1])      # call the parameter stepping function
             self.error_list.append([self.iteration, self.minimum_error])
-            t_end = time.time()
+            self.t_end = time.time()
             if (self.iteration % 1000) == 0:
-                self.show_state(f'Iteration: {self.iteration} dt:{t_end-t_start:.4f}')
+                self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
+        self.t_solve_end = time.time()
 
 
     def twiddle_one_parameter(self, parameter):
-        print('twiddle:', parameter[2], parameter[1])
+        #print('twiddle:', parameter[2], parameter[1])
         return parameter[0](parameter[1])
 
 
@@ -298,27 +300,34 @@ class FrequencyTableSolver():
 
 
     def solve_parallel(self, iterations=1):
+        self.t_solve_start = time.time()
         self.initialize_deltas()
         self.error_list = []
+        pool = mp.Pool(mp.cpu_count())
+        #pool = mp.Pool(1)
 
         for self.iteration in range(iterations):
-            t_start = time.time()
+            self.t_start = time.time()
             self.minimum_error = self.evaluate()
             self.update_parameter_list()
-            pool = mp.Pool(mp.cpu_count())
-            #pool = mp.Pool(1)
-
-            results = pool.map_async(self.twiddle_one_parameter, [(parameter) for parameter in self.parameters]).get()
-            print('pool result:', results)
+    
+            results = pool.map_async(self.twiddle_one_parameter, [parameter for parameter in self.parameters]).get()
+            #print('pool result:', results)
             for result in results:
                 self.update_parameter(result)
 
-            self.error_list.append([self.iteration, self.minimum_error])
-            t_end = time.time()
-            if (self.iteration % 1) == 0:
-                self.show_state(f'Iteration: {self.iteration} dt:{t_end-t_start:.4f}')
+            # update worker processes with new solution
+            context = self.save_solution()
+            results = pool.apply(self.restore_solution, args=(context)).get()
 
-            pool.close()
+            self.error_list.append([self.iteration, self.minimum_error])
+            self.t_end = time.time()
+            if (self.iteration % 100) == 0:
+                self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
+
+        pool.close()
+        pool.join()
+        self.t_solve_end = time.time()
 
 if __name__ == "__main__":
 
@@ -327,18 +336,25 @@ if __name__ == "__main__":
     solver = FrequencyTableSolver(file_name, 'output.csv')
     solver.show_state('STARTING POINT SOLUTION')
 
-    import cProfile, io, pstats
-    pr = cProfile.Profile()
-    pr.enable()
-    solver.solve(iterations=10000)
-    pr.disable()
-    s = io.StringIO()
-    ps = pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE)
-    ps.print_stats()
-    print(s.getvalue())
+    profile = False
+    if profile:
+        import cProfile, io, pstats
+        pr = cProfile.Profile()
+        pr.enable()
+        solver.solve(iterations=1000)
+        #solver.solve_parallel(iterations=1000)
+        pr.disable()
+        s = io.StringIO()
+        ps = pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE)
+        ps.print_stats()
+        print(s.getvalue())
+    else:
+        solver.solve(iterations=10000)
+        #solver.solve_parallel(iterations=1000)
 
     solver.show_state('ENDING POINT SOLUTION')
 
     print(f'error_list: {solver.error_list}')
     print(f'data: {solver.data}')
     print(f'fitted_frequencies: {solver.fitted_frequencies}')
+    print(f'iterations/second: {(solver.iteration+1)/(solver.t_solve_end-solver.t_solve_start):.1f}')
