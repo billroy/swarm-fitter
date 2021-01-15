@@ -72,6 +72,12 @@ class FrequencyTableSolver():
             }) + '\n')
 
 
+    def load_solution_from_file(self, file_name, index=-1):
+        with open(file_name, 'r') as file:
+            solution = json.loads(file.read().strip().split('\n')[index])
+        return solution
+
+
     def get_random_starting_point(self):
         # Multipliers
         # Use the row and column factors of the standard zero correlation model for tabular data
@@ -311,14 +317,14 @@ class FrequencyTableSolver():
             self.minimum_error = self.evaluate()
             self.update_parameter_list()
     
-            results = pool.map_async(self.twiddle_one_parameter, [parameter for parameter in self.parameters]).get()
+            results = pool.map(self.twiddle_one_parameter, [parameter for parameter in self.parameters])
             #print('pool result:', results)
             for result in results:
                 self.update_parameter(result)
 
             # update worker processes with new solution
-            context = self.save_solution()
-            results = pool.apply(self.restore_solution, args=(context)).get()
+            self.context = self.save_solution()
+            results = pool.map(self.restore_solution, (self.context,))
 
             self.error_list.append([self.iteration, self.minimum_error])
             self.t_end = time.time()
@@ -336,6 +342,8 @@ if __name__ == "__main__":
     solver = FrequencyTableSolver(file_name, 'output.csv')
     solver.show_state('STARTING POINT SOLUTION')
 
+    print('testing load_data:', solver.load_solution_from_file('output.csv', -1))
+
     profile = False
     if profile:
         import cProfile, io, pstats
@@ -349,8 +357,8 @@ if __name__ == "__main__":
         ps.print_stats()
         print(s.getvalue())
     else:
-        solver.solve(iterations=10000)
-        #solver.solve_parallel(iterations=1000)
+        #solver.solve(iterations=10000)
+        solver.solve_parallel(iterations=1000)
 
     solver.show_state('ENDING POINT SOLUTION')
 
