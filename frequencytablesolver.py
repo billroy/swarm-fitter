@@ -134,10 +134,17 @@ class FrequencyTableSolver():
 
     def evaluate(self, hint=''):
         # Chi-square against zero correlation model
+        t1 = time.time()
         one_dimensional_distances = np.absolute(np.subtract.outer(self.rx, self.cx))
+        t2 = time.time()
         products_of_multipliers = (np.outer(self.rm, self.cm))
+        t3 = time.time()
         self.fitted_frequencies = products_of_multipliers * 2**(-(one_dimensional_distances**self.a))
-        return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
+        t4 = time.time()
+        error = np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
+        t5 = time.time()
+        #print(f'tot:{1e6*(t5-t1):.3f} t2:{1e6*(t2-t1):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
+        return error
 
 
     def evaluate_with_hint(self, hint=''):
@@ -148,7 +155,6 @@ class FrequencyTableSolver():
             self.products_of_multipliers = (np.outer(self.rm, self.cm))
         self.fitted_frequencies = self.products_of_multipliers * 2**(-(self.one_dimensional_distances**self.a))
         return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
-
 
 
     # Solver optimization implementation
@@ -172,87 +178,94 @@ class FrequencyTableSolver():
     # Methods to step each parameter type down the goodness-of-fit gradient
 
     def twiddle_row_multiplier(self, i):
+        t1 = time.time()
+        rm = self.rm[i]
         self.rm[i] *= self.rm_delta[i]
         right_error = self.evaluate(hint='rm')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.rm_delta[i] *= 1.01
         else:
-            self.rm[i] /= self.rm_delta[i]**2
+            self.rm[i] = rm / self.rm_delta[i]
             left_error = self.evaluate(hint='rm')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.rm_delta[i] /= 1.01    
             else:
-                self.rm[i] *= self.rm_delta[i]
+                self.rm[i] = rm
                 self.rm_delta[i] **= .5
+        #print(f'rm: {1e6*(time.time()-t1)}')
         return(('rm', i, self.rm[i], self.rm_delta[i]))
 
     def twiddle_column_multiplier(self, i):
+        cm = self.cm[i]
         self.cm[i] *= self.cm_delta[i]
         right_error = self.evaluate(hint='cm')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.cm_delta[i] *= 1.01        
         else:
-            self.cm[i] /= self.cm_delta[i]**2
+            self.cm[i] = cm / self.cm_delta[i]
             left_error = self.evaluate(hint='cm')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.cm_delta[i] /= 1.01
             else:
-                self.cm[i] *= self.cm_delta[i]
+                self.cm[i] = cm
                 self.cm_delta[i] **= .5
         return(('cm', i, self.cm[i], self.cm_delta[i]))
 
     def twiddle_row_coordinate(self, i):
+        rx = self.rx[i]
         self.rx[i] += self.rx_delta[i]
         right_error = self.evaluate(hint='rx')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.rx_delta[i] *= 1.1
         else:
-            self.rx[i] -= 2 * self.rx_delta[i]
+            self.rx[i] = rx - self.rx_delta[i]
             left_error = self.evaluate(hint='rx')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.rx_delta[i] *= -1.1
             else:
-                self.rx[i] += self.rx_delta[i]
+                self.rx[i] = rx
                 self.rx_delta[i] *= .5
         return(('rx', i, self.rx[i], self.rx_delta[i]))
 
     def twiddle_column_coordinate(self, i):
+        cx = self.cx[i]
         self.cx[i] += self.cx_delta[i]
         right_error = self.evaluate(hint='cxx')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.cx_delta[i] *= 1.1        
         else:
-            self.cx[i] -= 2 * self.cx_delta[i]
+            self.cx[i] = cx - self.cx_delta[i]
             left_error = self.evaluate(hint='cxx')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.cx_delta[i] *= -1.1
             else:
-                self.cx[i] += self.cx_delta[i]
+                self.cx[i] = cx
                 self.cx_delta[i] *= .5
         return(('cx', i, self.cx[i], self.cx_delta[i]))
 
     def twiddle_a(self, i):
+        a = self.a
         self.a += self.a_delta
         right_error = self.evaluate(hint='a')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.a_delta += .0001       
         else:
-            self.a -= 2 * self.a_delta
+            self.a = a - self.a_delta
             left_error = self.evaluate(hint='a')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.a_delta = - (self.a_delta +.0001)  
             else:
-                self.a = self.a + self.a_delta
+                self.a = a
                 self.a_delta += .0001
         return(('a', i, self.a, self.a_delta))
 
@@ -317,14 +330,14 @@ class FrequencyTableSolver():
             self.minimum_error = self.evaluate()
             self.update_parameter_list()
     
-            results = pool.map(self.twiddle_one_parameter, [parameter for parameter in self.parameters])
+            results = pool.map_async(self.twiddle_one_parameter, [parameter for parameter in self.parameters]).get()
             #print('pool result:', results)
             for result in results:
                 self.update_parameter(result)
 
             # update worker processes with new solution
             self.context = self.save_solution()
-            results = pool.map(self.restore_solution, (self.context,))
+            results = pool.map_async(self.restore_solution, (self.context,)).get()
 
             self.error_list.append([self.iteration, self.minimum_error])
             self.t_end = time.time()
@@ -342,8 +355,6 @@ if __name__ == "__main__":
     solver = FrequencyTableSolver(file_name, 'output.csv')
     solver.show_state('STARTING POINT SOLUTION')
 
-    print('testing load_data:', solver.load_solution_from_file('output.csv', -1))
-
     profile = False
     if profile:
         import cProfile, io, pstats
@@ -357,8 +368,8 @@ if __name__ == "__main__":
         ps.print_stats()
         print(s.getvalue())
     else:
-        #solver.solve(iterations=10000)
-        solver.solve_parallel(iterations=1000)
+        solver.solve(iterations=10000)
+        #solver.solve_parallel(iterations=1000)
 
     solver.show_state('ENDING POINT SOLUTION')
 
