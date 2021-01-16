@@ -42,7 +42,9 @@ class FrequencyTableSolver():
         print(f'rm: {self.rm}')
         print(f'cm: {self.cm}')
         print(f'a: {self.a:.5f}')
-        print(f'error: {self.minimum_error:.5f}')
+        error = self.minimum_error
+        if error == None: error = 0
+        print(f'error: {error:.5f}')
         self.save_solution_to_file()
 
 
@@ -145,7 +147,7 @@ class FrequencyTableSolver():
         t4 = time.time()
         error = np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
         t5 = time.time()
-        print(f'eval tot (us):{1e6*(t5-t1):.3f} t2:{1e6*(t2-t1):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
+        #print(f'eval tot (us):{1e6*(t5-t1):.3f} t2:{1e6*(t2-t1):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
         return error
 
 
@@ -281,6 +283,7 @@ class FrequencyTableSolver():
 
 
     def solve(self, iterations=1):
+        print('Solving...', iterations)
         self.t_solve_start = time.time()
         self.initialize_deltas()
         self.error_list = []
@@ -292,10 +295,10 @@ class FrequencyTableSolver():
                 parameter[0](parameter[1])      # call the parameter stepping function
             self.error_list.append([self.iteration, self.minimum_error])
             self.t_end = time.time()
-            if (self.iteration % 1000) == 0:
+            if self.iteration and (self.iteration % 1000) == 0:
                 self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
         self.t_solve_end = time.time()
-        return (self.minimum_error, self.get_solution())
+        return (self.minimum_error, self.save_solution())
 
 
     def twiddle_one_parameter(self, parameter):
@@ -357,43 +360,47 @@ class FrequencyTableSolver():
         self.t_solve_end = time.time()
 
 
-    def solve_parallel_2(self, iterations=1):
+    def solve_parallel_2(self, iterations=1, worker_iterations=100, workers=4):
         self.t_solve_start = time.time()
-        self.initialize_deltas()
-        self.error_list = []
-        pool = mp.Pool(mp.cpu_count())
-        #pool = mp.Pool(1)
+        pool = mp.Pool(workers)
 
-        for self.iteration in range(iterations):
+        for self.parallel_iteration in range(iterations):
             self.t_start = time.time()
-            self.minimum_error = self.evaluate()
-            self.update_parameter_list()
-    
-            results = pool.map_async(self.solve, ()).get()
+            results = pool.map_async(self.solve, [worker_iterations for i in range(workers)]).get()
             t2 = time.time()
-            print('pool result:', results)
-            #for result in results:
-            #    self.update_parameter(result)
+            #print('pool2 results:', len(results), type(results), results)
+
+            best_result = None
+            best_result_index = None
+            for i in range(len(results)):
+                if best_result == None or results[i][0] < best_result: 
+                    best_result = results[i][0]
+                    best_result_index = i
+            if best_result == None: raise('noresult')
+            self.minimum_error = best_result
+            self.context = results[best_result_index][1]
+            print(f'best result: {best_result}')
+            self.restore_solution(self.context)
             t3 = time.time()
-            return
 
             # update worker processes with new solution
-            self.context = self.save_solution()
             t4 = time.time()
             results = pool.map_async(self.restore_solution, (self.context,)).get()
             t5 = time.time()
-            print(f'solve_parallel tot:{1e6*(t5-self.t_start):.3f} t2:{1e6*(t2-self.t_start):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
+            print(f'solve_parallel_2 tot us:{1e6*(t5-self.t_start):.3f} t2:{1e6*(t2-self.t_start):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
 
             self.error_list.append([self.iteration, self.minimum_error])
             self.t_end = time.time()
-            if (self.iteration % 100) == 0:
+            if (self.iteration % 1000) == 0:
                 self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
 
         pool.close()
         pool.join()
         self.t_solve_end = time.time()
-
-
+        print(f'total iterations: {iterations * worker_iterations}')
+        print(f'elapsed time: {self.t_solve_end-self.t_solve_start}')
+        self.iteration = iterations * worker_iterations
+        print(f'parallel iterations/second: {(iterations * worker_iterations)/(self.t_solve_end-self.t_solve_start):.1f}')
 
 
 if __name__ == "__main__":
@@ -416,8 +423,9 @@ if __name__ == "__main__":
         ps.print_stats()
         print(s.getvalue())
     else:
-        solver.solve(iterations=10000)
+        #solver.solve(iterations=10000)
         #solver.solve_parallel(iterations=1000)
+        solver.solve_parallel_2(iterations=10, worker_iterations=1000, workers=mp.cpu_count())
 
     solver.show_state('ENDING POINT SOLUTION')
 
