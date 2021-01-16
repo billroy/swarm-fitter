@@ -28,6 +28,7 @@ class FrequencyTableSolver():
         print(f'data: {self.data}')
 
         self.initialize_parameter_list()
+        print(f'parameters: {len(self.parameters)}')
         self.initialize_starting_point()
 
 
@@ -46,6 +47,7 @@ class FrequencyTableSolver():
 
 
     def read_csv_data(self, file_name):
+        print(f'loading file: {file_name}')
         with open(file_name, 'r') as infile:
             text = infile.read()
         lines = text.split('\n')                    # split file in to lines separated by the invisible character \r
@@ -143,15 +145,15 @@ class FrequencyTableSolver():
         t4 = time.time()
         error = np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
         t5 = time.time()
-        #print(f'tot:{1e6*(t5-t1):.3f} t2:{1e6*(t2-t1):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
+        print(f'eval tot (us):{1e6*(t5-t1):.3f} t2:{1e6*(t2-t1):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
         return error
 
 
     def evaluate_with_hint(self, hint=''):
         # Chi-square against zero correlation model
-        if self.one_dimensional_distances is None or (hint == 'rx' or hint == 'cx'):
+        if self.one_dimensional_distances is None or hint == 'rx' or hint == 'cx':
             self.one_dimensional_distances = np.absolute(np.subtract.outer(self.rx, self.cx))
-        if self.products_of_multipliers is None or (hint == 'rm' or hint == 'cm'):
+        if self.products_of_multipliers is None or hint == 'rm' or hint == 'cm':
             self.products_of_multipliers = (np.outer(self.rm, self.cm))
         self.fitted_frequencies = self.products_of_multipliers * 2**(-(self.one_dimensional_distances**self.a))
         return np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
@@ -236,13 +238,13 @@ class FrequencyTableSolver():
     def twiddle_column_coordinate(self, i):
         cx = self.cx[i]
         self.cx[i] += self.cx_delta[i]
-        right_error = self.evaluate(hint='cxx')
+        right_error = self.evaluate(hint='cx')
         if right_error < self.minimum_error:
             self.minimum_error = right_error
             self.cx_delta[i] *= 1.1        
         else:
             self.cx[i] = cx - self.cx_delta[i]
-            left_error = self.evaluate(hint='cxx')
+            left_error = self.evaluate(hint='cx')
             if left_error < self.minimum_error:
                 self.minimum_error = left_error
                 self.cx_delta[i] *= -1.1
@@ -293,6 +295,7 @@ class FrequencyTableSolver():
             if (self.iteration % 1000) == 0:
                 self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
         self.t_solve_end = time.time()
+        return (self.minimum_error, self.get_solution())
 
 
     def twiddle_one_parameter(self, parameter):
@@ -330,14 +333,19 @@ class FrequencyTableSolver():
             self.minimum_error = self.evaluate()
             self.update_parameter_list()
     
-            results = pool.map_async(self.twiddle_one_parameter, [parameter for parameter in self.parameters]).get()
+            results = pool.map(self.twiddle_one_parameter, [parameter for parameter in self.parameters])
+            t2 = time.time()
             #print('pool result:', results)
             for result in results:
                 self.update_parameter(result)
+            t3 = time.time()
 
             # update worker processes with new solution
             self.context = self.save_solution()
+            t4 = time.time()
             results = pool.map_async(self.restore_solution, (self.context,)).get()
+            t5 = time.time()
+            print(f'solve_parallel tot:{1e6*(t5-self.t_start):.3f} t2:{1e6*(t2-self.t_start):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
 
             self.error_list.append([self.iteration, self.minimum_error])
             self.t_end = time.time()
