@@ -356,6 +356,46 @@ class FrequencyTableSolver():
         pool.join()
         self.t_solve_end = time.time()
 
+
+    def solve_parallel_2(self, iterations=1):
+        self.t_solve_start = time.time()
+        self.initialize_deltas()
+        self.error_list = []
+        pool = mp.Pool(mp.cpu_count())
+        #pool = mp.Pool(1)
+
+        for self.iteration in range(iterations):
+            self.t_start = time.time()
+            self.minimum_error = self.evaluate()
+            self.update_parameter_list()
+    
+            results = pool.map_async(self.solve, ()).get()
+            t2 = time.time()
+            print('pool result:', results)
+            #for result in results:
+            #    self.update_parameter(result)
+            t3 = time.time()
+            return
+
+            # update worker processes with new solution
+            self.context = self.save_solution()
+            t4 = time.time()
+            results = pool.map_async(self.restore_solution, (self.context,)).get()
+            t5 = time.time()
+            print(f'solve_parallel tot:{1e6*(t5-self.t_start):.3f} t2:{1e6*(t2-self.t_start):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
+
+            self.error_list.append([self.iteration, self.minimum_error])
+            self.t_end = time.time()
+            if (self.iteration % 100) == 0:
+                self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
+
+        pool.close()
+        pool.join()
+        self.t_solve_end = time.time()
+
+
+
+
 if __name__ == "__main__":
 
     file_name = "degree by family income_6x12.csv"
