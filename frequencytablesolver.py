@@ -113,14 +113,14 @@ class FrequencyTableSolver():
         self.cx = self.cx - s
 
 
-    def initialize_starting_point(self, tries=20, iterations=2):
+    def initialize_starting_point(self, tries=20, iterations=50):
         best_error = None
         best_solution = None
         for random_start in range(tries):
             self.get_random_starting_point()
             self.show_state(f'Random start: {random_start}')
-            error = self.solve(iterations=iterations)
-            if best_error is None or error < best_error:
+            self.solve(iterations=iterations)
+            if best_error is None or self.evaluate() < best_error:
                 best_solution = self.save_solution()
 
         #Continue from the best of the semi_starts.   Add lots of iterations.
@@ -283,7 +283,7 @@ class FrequencyTableSolver():
 
 
     def solve(self, iterations=1):
-        print('Solving...', iterations)
+        #print('Solving...', iterations)
         self.t_solve_start = time.time()
         self.initialize_deltas()
         self.error_list = []
@@ -363,6 +363,8 @@ class FrequencyTableSolver():
     def solve_parallel_2(self, iterations=1, worker_iterations=100, workers=4):
         self.t_solve_start = time.time()
         pool = mp.Pool(workers)
+        last_best_result = None
+        cutoff_ratio = .9995
 
         for self.parallel_iteration in range(iterations):
             self.t_start = time.time()
@@ -377,9 +379,12 @@ class FrequencyTableSolver():
                     best_result = results[i][0]
                     best_result_index = i
             if best_result == None: raise('noresult')
-            self.minimum_error = best_result
+            if last_best_result == None: last_best_result = best_result
+            ratio = best_result / last_best_result
+            print(f'best result: {best_result} ratio: {ratio}')
+            last_best_result = best_result
+
             self.context = results[best_result_index][1]
-            print(f'best result: {best_result}')
             self.restore_solution(self.context)
             t3 = time.time()
 
@@ -393,6 +398,8 @@ class FrequencyTableSolver():
             self.t_end = time.time()
             if (self.iteration % 1000) == 0:
                 self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
+
+            if self.parallel_iteration > 0 and ratio > cutoff_ratio: break
 
         pool.close()
         pool.join()
@@ -425,7 +432,7 @@ if __name__ == "__main__":
     else:
         #solver.solve(iterations=10000)
         #solver.solve_parallel(iterations=1000)
-        solver.solve_parallel_2(iterations=10, worker_iterations=1000, workers=mp.cpu_count())
+        solver.solve_parallel_2(iterations=100, worker_iterations=150, workers=mp.cpu_count())
 
     solver.show_state('ENDING POINT SOLUTION')
 
