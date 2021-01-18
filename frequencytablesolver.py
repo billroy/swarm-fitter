@@ -8,28 +8,18 @@ import time
 
 class FrequencyTableSolver():
 
-    def __init__(self, input_file_name, output_file_name):
+    def __init__(self):
 
         np.seterr(all='raise')
         np.set_printoptions(precision=5)
+        self.output_file_name = 'output.json'
 
         self.iteration = None
         self.minimum_error = 0
         self.one_dimensional_distances = None
         self.products_of_multipliers = None
 
-        self.input_file_name = input_file_name
-        self.output_file_name = output_file_name
-        self.read_csv_data(self.input_file_name)
-        self.nrow, self.ncol = np.shape(self.data)
-
-        print(f'row_labels: {self.row_labels}')
-        print(f'column_labels: {self.column_labels}')
-        print(f'data: {self.data}')
-
-        self.initialize_parameter_list()
-        print(f'parameters: {len(self.parameters)}')
-        self.initialize_starting_point()
+        #self.initialize_starting_point()
 
 
     def show_state(self, tag):
@@ -58,6 +48,13 @@ class FrequencyTableSolver():
         self.column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
         self.row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
         self.data = input_as_array[1:, 1:].astype("float")
+        self.nrow, self.ncol = np.shape(self.data)
+        print(f'row_labels: {self.row_labels}')
+        print(f'column_labels: {self.column_labels}')
+        print(f'data: {self.data}')
+        self.initialize_parameter_list()
+        print(f'parameters: {len(self.parameters)}')
+
 
 
     def save_solution_to_file(self):
@@ -81,6 +78,12 @@ class FrequencyTableSolver():
             solution = json.loads(file.read().strip().split('\n')[index])
         return solution
 
+    def update_job_data(self, update):
+        self.nrow = update[0]
+        self.ncol = update[1]
+        self.column_labels = np.array(update[2])
+        self.row_labels = np.array(update[3])
+        self.data = np.array(update[4])
 
     def get_random_starting_point(self):
         # Multipliers
@@ -145,6 +148,8 @@ class FrequencyTableSolver():
         t3 = time.time()
         self.fitted_frequencies = products_of_multipliers * 2**(-(one_dimensional_distances**self.a))
         t4 = time.time()
+        # try exp
+        #error np.sum(
         error = np.sum(((self.data - self.fitted_frequencies)**2) / self.fitted_frequencies)
         t5 = time.time()
         #print(f'eval tot (us):{1e6*(t5-t1):.3f} t2:{1e6*(t2-t1):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
@@ -285,11 +290,14 @@ class FrequencyTableSolver():
     def solve(self, iterations=1):
         #print('Solving...', iterations)
         self.t_solve_start = time.time()
+        cutoff_ratio = .999995
+
+        #random.seed()
         self.initialize_deltas()
         self.error_list = []
         for self.iteration in range(iterations):
             self.t_start = time.time()
-            self.minimum_error = self.evaluate()
+            last_error = self.minimum_error = self.evaluate()
             self.update_parameter_list()
             for parameter in self.parameters:
                 parameter[0](parameter[1])      # call the parameter stepping function
@@ -297,6 +305,12 @@ class FrequencyTableSolver():
             self.t_end = time.time()
             if self.iteration and (self.iteration % 1000) == 0:
                 self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
+                if last_error != None and self.iteration != 0:
+                    ratio = self.minimum_error / last_error
+                    print(f'ratio: {ratio}')
+                    #if ratio > cutoff_ratio: break
+                    last_error = self.minimum_error
+
         self.t_solve_end = time.time()
         return (self.minimum_error, self.save_solution())
 
@@ -412,9 +426,9 @@ class FrequencyTableSolver():
 
 if __name__ == "__main__":
 
-    file_name = "degree by family income_6x12.csv"
-
-    solver = FrequencyTableSolver(file_name, 'output.csv')
+    solver = FrequencyTableSolver()
+    solver.read_csv_data("degree by family income_6x12.csv")
+    solver.initialize_starting_point()
     solver.show_state('STARTING POINT SOLUTION')
 
     profile = False
@@ -430,9 +444,9 @@ if __name__ == "__main__":
         ps.print_stats()
         print(s.getvalue())
     else:
-        #solver.solve(iterations=10000)
+        solver.solve(iterations=100*150)
         #solver.solve_parallel(iterations=1000)
-        solver.solve_parallel_2(iterations=100, worker_iterations=150, workers=mp.cpu_count())
+        #solver.solve_parallel_2(iterations=100, worker_iterations=150, workers=mp.cpu_count())
 
     solver.show_state('ENDING POINT SOLUTION')
 
