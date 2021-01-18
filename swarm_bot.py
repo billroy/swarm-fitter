@@ -18,17 +18,19 @@ class SwarmBot():
     def __init__(self, url='localhost:5000'):
         #print('Starting bot...')
         self.server_url = url
-        self.running = False
         self.verbose = True
         self.name = 'Solver-' + str(random.randrange(1000))
         self.last_update_time = time.time()
+        self.update_interval = 2
+        self.best_error = None
         self.last_best_error = None
-        self.job_data_update = None
+        self.solution_update = None
         self.solver = FrequencyTableSolver()
 
         self.sio = None
         self.init_socketio()
 
+        self.running = False
         self.solver_thread = threading.Thread(target=self.solver_task)
         self.solver_thread.start()
     
@@ -111,29 +113,47 @@ class SwarmBot():
     def _handle_command(self, msg):
 
         #self.log('handle_lobby')
-        print(self.now(), 'handle_command:', self.name, msg['cmd'])
+        print(self.now(), 'handle_command:', self.name, msg['cmd'], msg)
 
         if msg['cmd'] == 'update_job_data':
             self.solver.update_job_data(msg['job_data'])
-            if not 'rx' in self.solver:
+            self.solver.initialize_parameter_list()
+            if not hasattr(self.solver, 'rx'):
                 self.solver.get_random_starting_point()
-        
+                self.running = True
+
         elif msg['cmd'] == 'update_solution':
             self.running = True
-            if msg['error'] < self.solver.best_error:
-                self.solution_update = msg['solution']
+            if not hasattr(self.solver, 'rx') or msg['error'] < self.solver.minimum_error:
+                self.solution_update = msg
+                self.best_error = self.last_best_error = msg['error']
 
         elif msg['cmd'] == 'random_start':
-            self.running = True
             self.solver.initialize_starting_point()
+            self.send('command', {
+                'cmd': 'error',
+                'error': self.solver.evaluate()
+            });
+            self.running = True
 
         elif msg['cmd'] == 'send_solution':
-            self.send('command', {
+            solution = {
                 'cmd': 'solution',
                 'name': self.name,
-                'error': self.solver.best_error,
-                'solution': self.solver.get_solution()
-            })
+                'error': self.solver.minimum_error,
+                'solution': {
+                    'rx': self.solver.rx.tolist(),
+                    'cx': self.solver.cx.tolist(),
+                    'rm': self.solver.rm.tolist(),
+                    'cm': self.solver.cm.tolist(),
+                    'a': self.solver.a
+                }
+            }
+            print(f'sending solution: {solution}')
+            self.send('command', solution)
+
+        elif msg['cmd'] == 'run':
+            self.running = True
 
         elif msg['cmd'] == 'stop':
             self.running = False
@@ -147,24 +167,29 @@ class SwarmBot():
     def solver_task(self):
 
         while True:
-            self.solver.solve(iterations=100)
+            if self.running:
+                self.solver.solve(iterations=10)
 
-            now = time.time()
-            if self.solution_update != None:
-                if self.solution_update['error'] < self.solver.best_error:
-                    self.solver.update_solution(self.solution_update)
-                    self.solution_update = None
+                now = time.time()
+                if self.solution_update != None:
+                    print(f'solver_task: updating solution {self.solution_update}')
+                    if self.solution_update['error'] < self.solver.minimum_error:
+                        print(f'updating solution from server')
+                        self.solver.update_solution(self.solution_update)
+                        self.solution_update = None
+                        self.last_update_time = now
 
-            elif now - self.last_update_time > self.update_interval:
-                if self.solver.best_error < self.last_best_error:
-                    self.last_update_time = now
-                    self.last_best_error = self.solver.best_error
-                    self.send('command', {
-                        'cmd': 'error',
-                        'error': self.solver.best_error
-                    });
+                elif now - self.last_update_time > self.update_interval:
+                    if self.last_best_error == None or self.solver.minimum_error < self.last_best_error:
+                        self.last_update_time = now
+                        self.last_best_error = self.solver.minimum_error
+                        self.send('command', {
+                            'cmd': 'error',
+                            'name': self.name,
+                            'error': self.solver.minimum_error
+                        });
 
-            self.socketio.sleep(.020)
+            self.sio.sleep(.020)
 
 
 if __name__ == '__main__':

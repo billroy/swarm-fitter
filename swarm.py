@@ -25,87 +25,107 @@ parser.add_argument('--port', default=5000, type=int)
 args = parser.parse_args()
 print('args:', args)
 
-# Make Flask play nice with Vue templates by redefining the Flask/ Jinja
-# start and end tags so they don't conflict (both default to {{ }})
-class CustomFlask(Flask):
-    jinja_options = Flask.jinja_options.copy()
-    jinja_options.update(dict(
-        variable_start_string='%%',  # Default is '{{', I'm changing this because Vue.js uses '{{' / '}}'
-        variable_end_string='%%',
-    ))
-app = CustomFlask(__name__)
-app.config['SECRET_KEY'] = 'secret-sauce!'
-socketio = SocketIO(app, always_connect=True)
+
+class SwarmBoss():
+
+    def __init__(self, args):
+
+        self.args = args
+
+        # Make Flask play nice with Vue templates by redefining the Flask/ Jinja
+        # start and end tags so they don't conflict (both default to {{ }})
+        class CustomFlask(Flask):
+            jinja_options = Flask.jinja_options.copy()
+            jinja_options.update(dict(
+                variable_start_string='%%',  # Default is '{{', I'm changing this because Vue.js uses '{{' / '}}'
+                variable_end_string='%%',
+            ))
+        app = CustomFlask(__name__)
+        app.config['SECRET_KEY'] = 'secret-sauce!'
+
+        self.job_data = self.read_csv_data(args.input_file)
+        print(f'job_data: {self.job_data}')
+        self.solution = None
+        self.best_error = None
+        self.last_best_error = None
+        self.last_update_time = time.time()
+
+        self.init_socketio()
 
 
-# initialize data
-def read_csv_data(file_name):
-    print(f'loading file: {file_name}')
-    with open(file_name, 'r') as infile:
-        text = infile.read()
-    lines = text.split('\n')                    # split file in to lines separated by the invisible character \r
-    lines = [line.split(',') for line in lines] # convert each line to a list of its column values
-    input_as_array = np.array(lines)            # convert to np array format
-    column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
-    row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
-    data = input_as_array[1:, 1:].astype("float")
-    nrow, ncol = np.shape(data)
-    return (nrow, ncol, column_labels.tolist(), row_labels.tolist(), data.tolist())
+    # initialize data
+    def read_csv_data(file_name):
+        print(f'loading file: {file_name}')
+        with open(file_name, 'r') as infile:
+            text = infile.read()
+        lines = text.split('\n')                    # split file in to lines separated by the invisible character \r
+        lines = [line.split(',') for line in lines] # convert each line to a list of its column values
+        input_as_array = np.array(lines)            # convert to np array format
+        column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
+        row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
+        data = input_as_array[1:, 1:].astype("float")
+        nrow, ncol = np.shape(data)
+        return (nrow, ncol, column_labels.tolist(), row_labels.tolist(), data.tolist())
 
-job_data = read_csv_data(args.input_file)
-print(f'job_data: {job_data}')
-solution = None
-best_error = None
-last_best_error = None
-last_update_time = time.time()
 
-# socket event handlers
-@socketio.on('connect')
-def handle_connect():
-    print(datetime.now(), 'connect::', request.sid, request.host_url, request.headers, request.remote_addr, request.remote_user)
+    def init_socketio(self):
+        socketio.on('connect', handle_connect)
+        socketio.on('command', handle_command)
+        socketio = SocketIO(app, always_connect=True)
 
-@socketio.on('command')
-def dispatch_command(msg):
-    global best_error, solution
-    try:
-        print('command:', msg)
 
-        if msg['cmd'] == 'iam':
-            socketio.emit('command', {'cmd': 'update_job_data', 'job_data': job_data})
-            if solution:
-                socketio.emit('command', {'cmd': 'update_solution', 'error': best_error, 'solution': solution})
-            else:
-                socketio.emit('command', {'cmd': 'random_start'})
+    # socket event handlers
+    def handle_connect():
+        print(datetime.now(), 'connect::', request.sid, request.host_url, request.headers, request.remote_addr, request.remote_user)
 
-        elif msg['cmd'] == 'error':
-            if msg['error'] < best_error:
-                print(f"new best_error: {msg['error']} {msg['name']}")
-                socketio.emit('command', {'cmd': 'send_solution'})
-        
-        elif msg['cmd'] == 'solution':
-            if best_error == None or msg['error'] < best_error:
-                best_error = msg['error']
-                solution = msg['solution']
+    def handle_command(msg):
+        try:
+            global best_error, solution
+            print('command:', msg)
 
-    except Exception as e:
-        print('exception in dispatch_command')
-        print(str(e))
-        print(sys.exc_info()[0])
-        print(traceback.format_exc())
+            if msg['cmd'] == 'iam':
+                socketio.emit('command', {'cmd': 'update_job_data', 'job_data': job_data})
+                if solution is not None:
+                    socketio.emit('command', {'cmd': 'update_solution', 'error': best_error, 'solution': solution})
+                else:
+                    socketio.emit('command', {'cmd': 'random_start'})
+
+            elif msg['cmd'] == 'error':
+                print(f'error: best_error: {best_error}')
+                if best_error == None or msg['error'] < best_error:
+                    print(f"new best_error: {msg['error']}")
+                    socketio.send('command', {'cmd': 'send_solution'})
+                else:
+                    print(f'ignoring inferior error: {best_error} {msg["error"]}')
+            
+            elif msg['cmd'] == 'solution':
+                if best_error == None or msg['error'] < best_error:
+                    best_error = msg['error']
+                    solution = msg['solution']
+
+        except Exception as e:
+            print('exception in dispatch_command')
+            print(str(e))
+            print(sys.exc_info()[0])
+            print(traceback.format_exc())
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
 def solver_task():
-    global last_best_error, last_update_time
     while True:
+        global best_error, last_best_error, last_update_time, solution
 
-        now = str(datetime.now())[0:19]
-        msg = {'cmd': 'tick', 'time': now}
+        #now = datetime.now()
+        #now_str = str(now)[0:19]
+        #msg = {'cmd': 'tick', 'time': now_str}
         #socketio.emit('time', msg, broadcast=True)
-
-        if time.time() - last_update_time > args.update_interval:
+        print(f'solver task {best_error} {last_best_error}')
+        now = time.time()
+        if (now - last_update_time) > args.update_interval:
+            print(f'timer fired {best_error} {last_best_error}')
+            last_update_time = now
             if best_error != None and (last_best_error == None or best_error < last_best_error):
                 last_best_error = best_error
                 print(f'sending updated solution: {best_error}')

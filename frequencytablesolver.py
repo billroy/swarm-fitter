@@ -287,6 +287,16 @@ class FrequencyTableSolver():
         self.a_delta = .001
 
 
+    def update_solution(self, msg):
+        print(f'update solution: {msg}')
+        self.rx = np.array(msg['solution']['rx'])
+        self.cx = np.array(msg['solution']['cx'])
+        self.rm = np.array(msg['solution']['rm'])
+        self.cm = np.array(msg['solution']['cm'])
+        self.a = msg['solution']['a']
+        self.evaluate()
+
+
     def solve(self, iterations=1):
         #print('Solving...', iterations)
         self.t_solve_start = time.time()
