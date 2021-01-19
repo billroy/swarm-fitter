@@ -127,6 +127,8 @@ class SwarmBot():
             if not hasattr(self.solver, 'rx') or msg['error'] < self.solver.minimum_error:
                 self.solution_update = msg
                 self.best_error = self.last_best_error = msg['error']
+                self.solver.minimum_error = self.solver.evaluate()
+                print(f'updated solution: {self.solver.minimum_error} {self.best_error}')
 
         elif msg['cmd'] == 'random_start':
             self.solver.initialize_starting_point()
@@ -168,7 +170,12 @@ class SwarmBot():
 
         while True:
             if self.running:
-                self.solver.solve(iterations=10)
+
+                t1 = time.time()
+                iterations = 10
+                self.solver.solve(iterations=iterations)
+                t2 = time.time()
+                print(f'solver iterations/sec:{iterations/(t2-t1)} error {self.solver.minimum_error}')
 
                 now = time.time()
                 if self.solution_update != None:
