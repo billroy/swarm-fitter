@@ -5,8 +5,10 @@ from datetime import datetime
 from flask import Flask, Response, redirect, render_template, request, session, send_file
 from flask_socketio import Namespace, SocketIO, join_room, leave_room, rooms
 import json
+import multiprocessing as mp
 import numpy as np
 import os
+from subprocess import DEVNULL, Popen
 import sys
 import threading
 import time
@@ -54,6 +56,9 @@ class SwarmBoss():
         self.last_best_error = None
         self.last_update_time = time.time()
 
+        self.workers = []
+        self.start_workers(workers=args.workers)
+
 
     # initialize data
     def read_csv_data(self, file_name):
@@ -68,6 +73,14 @@ class SwarmBoss():
         data = input_as_array[1:, 1:].astype("float")
         nrow, ncol = np.shape(data)
         return (nrow, ncol, column_labels.tolist(), row_labels.tolist(), data.tolist())
+
+
+    def start_workers(self, workers=4):
+        command = [
+            'python3', 'swarm_bot.py'
+        ]
+        for worker in range(workers):
+            self.workers.append(Popen(command, stdout=DEVNULL, stderr=DEVNULL))
 
 
     # socket event handlers
@@ -127,8 +140,10 @@ class SwarmBoss():
 if __name__ == '__main__':
 
     # parse command line arguments
+    default_workers = mp.cpu_count()
     parser = argparse.ArgumentParser('swarm controller')
     parser.add_argument('--update_interval', default=5, type=int)
+    parser.add_argument('--workers', default=4, type=int)
     parser.add_argument('--bot_update_interval', default=5, type=int)
     parser.add_argument('--input_file', default='degree by family income_6x12.csv')
     parser.add_argument('--output_file', default='output.json')
