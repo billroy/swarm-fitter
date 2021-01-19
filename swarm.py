@@ -1,11 +1,9 @@
 # Swarm solver boss
 
 import argparse
-from copy import deepcopy
 from datetime import datetime
 from flask import Flask, Response, redirect, render_template, request, session, send_file
-from flask_socketio import SocketIO, join_room, leave_room, rooms
-import glob
+from flask_socketio import Namespace, SocketIO, join_room, leave_room, rooms
 import json
 import numpy as np
 import os
@@ -13,6 +11,21 @@ import sys
 import threading
 import time
 import traceback
+
+class BossIO(Namespace):
+
+    def on_connect(self):
+        global boss
+        boss.handle_connect()    
+
+    def on_disconnect(self):
+        global boss
+        boss.handle_disconect()
+    
+    def on_command(self, msg):
+        global boss
+        boss.handle_command(msg)
+
 
 class SwarmBoss():
 
@@ -30,9 +43,9 @@ class SwarmBoss():
             ))
         self.app = CustomFlask(__name__)
         self.app.config['SECRET_KEY'] = 'secret-sauce!'
+
         self.socketio = SocketIO(self.app, always_connect=True)
-        self.socketio.on('connect', self.handle_connect)
-        self.socketio.on('command', self.handle_command)
+        self.socketio.on_namespace(BossIO('/'))
 
         self.job_data = self.read_csv_data(args.input_file)
         print(f'job_data: {self.job_data}')
@@ -61,7 +74,6 @@ class SwarmBoss():
     def handle_connect(self):
         print(datetime.now(), 'connect::', request.sid, request.host_url, request.headers, request.remote_addr, request.remote_user)
 
-
     def handle_command(self, msg):
         try:
             print('command:', msg)
@@ -77,7 +89,7 @@ class SwarmBoss():
                 print(f'error: best_error: {self.best_error}')
                 if self.best_error == None or msg['error'] < self.best_error:
                     print(f"new best_error candidate: {msg['error']}")
-                    self.socketio.send('command', {'cmd': 'send_solution'})
+                    self.socketio.emit('command', {'cmd': 'send_solution'})
                 else:
                     print(f'ignoring inferior error: {self.best_error} {msg["error"]}')
             
@@ -98,7 +110,7 @@ class SwarmBoss():
             now = time.time()
             if (now - self.last_update_time) > args.update_interval:
                 print(f'solver task timer fired {self.best_error} {self.last_best_error}')
-                last_update_time = now
+                self.last_update_time = now
                 if self.best_error != None and (self.last_best_error == None or self.best_error < self.last_best_error):
                     self.last_best_error = self.best_error
                     print(f'sending updated solution: {self.best_error}')
