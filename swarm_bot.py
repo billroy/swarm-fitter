@@ -1,9 +1,8 @@
 # swarm optimizer worker
 
 import argparse
-from copy import deepcopy
 from datetime import datetime
-import math
+import os
 import random
 import sys
 import socketio
@@ -12,11 +11,11 @@ import time
 import traceback
 from frequencytablesolver import FrequencyTableSolver
 
-
 class SwarmBot():
 
     def __init__(self, url='localhost:5000'):
         #print('Starting bot...')
+        random.seed()
         self.server_url = url
         self.verbose = True
         self.name = 'Solver-' + str(random.randrange(1000))
@@ -46,7 +45,7 @@ class SwarmBot():
 
         self.sio.on('time', self.handle_time)
         self.sio.on('command', self.handle_command)
-        #self.sio.connect(self.server_url, headers={'iam':'bot', 'name':self.name}, transports=['polling'])
+        #self.sio.connect(self.server_url, headers={'iam':'bot', 'name':self.name, 'pid': os.getpid()}, transports=['polling'])
         self.sio.connect(self.server_url, transports=['polling'])
 
     def now(self):
@@ -123,17 +122,18 @@ class SwarmBot():
                 self.running = True
 
         elif msg['cmd'] == 'update_solution':
-            self.running = True
-            if not hasattr(self.solver, 'rx') or msg['error'] < self.solver.minimum_error:
+            print(f'update_solution: solver.minimum_error: {self.solver.minimum_error}')
+            if self.solver.minimum_error == None or msg['error'] < self.solver.minimum_error:
                 self.solution_update = msg
                 self.best_error = self.last_best_error = msg['error']
-                self.solver.minimum_error = self.solver.evaluate()
                 print(f'updated solution: {self.solver.minimum_error} {self.best_error}')
+            self.running = True
 
         elif msg['cmd'] == 'random_start':
             self.solver.initialize_starting_point()
             self.send('command', {
                 'cmd': 'error',
+                'name': self.name,
                 'error': self.solver.evaluate()
             });
             self.running = True
@@ -151,7 +151,7 @@ class SwarmBot():
                     'a': self.solver.a
                 }
             }
-            print(f'sending solution: {solution}')
+            #print(f'sending solution: {solution}')
             self.send('command', solution)
 
         elif msg['cmd'] == 'run':

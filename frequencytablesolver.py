@@ -15,7 +15,7 @@ class FrequencyTableSolver():
         self.output_file_name = 'output.json'
 
         self.iteration = None
-        self.minimum_error = 0
+        self.minimum_error = None
         self.one_dimensional_distances = None
         self.products_of_multipliers = None
 

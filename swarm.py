@@ -21,8 +21,9 @@ class BossIO(Namespace):
         boss.handle_connect()    
 
     def on_disconnect(self):
-        global boss
-        boss.handle_disconect()
+        pass
+        #global boss
+        #boss.handle_disconect()
     
     def on_command(self, msg):
         global boss
@@ -57,7 +58,8 @@ class SwarmBoss():
         self.last_update_time = time.time()
 
         self.workers = []
-        self.start_workers(workers=args.workers)
+        if args.workers > 0:
+            self.start_workers(args.workers)
 
 
     # initialize data
@@ -75,11 +77,11 @@ class SwarmBoss():
         return (nrow, ncol, column_labels.tolist(), row_labels.tolist(), data.tolist())
 
 
-    def start_workers(self, workers=4):
+    def start_workers(self, num_workers):
         command = [
             'python3', 'swarm_bot.py'
         ]
-        for worker in range(workers):
+        for worker in range(num_workers):
             self.workers.append(Popen(command, stdout=DEVNULL, stderr=DEVNULL))
 
 
@@ -143,7 +145,7 @@ if __name__ == '__main__':
     default_workers = mp.cpu_count()
     parser = argparse.ArgumentParser('swarm controller')
     parser.add_argument('--update_interval', default=5, type=int)
-    parser.add_argument('--workers', default=4, type=int)
+    parser.add_argument('--workers', default=0, type=int)
     parser.add_argument('--bot_update_interval', default=5, type=int)
     parser.add_argument('--input_file', default='degree by family income_6x12.csv')
     parser.add_argument('--output_file', default='output.json')
