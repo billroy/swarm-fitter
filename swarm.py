@@ -46,7 +46,7 @@ class SwarmBoss():
             ))
         self.app = CustomFlask(__name__)
         self.app.config['SECRET_KEY'] = 'secret-sauce!'
-
+        self.app.route('/')(self.serve_index)
         self.socketio = SocketIO(self.app, always_connect=True)
         self.socketio.on_namespace(BossIO('/'))
 
@@ -83,6 +83,10 @@ class SwarmBoss():
         ]
         for worker in range(num_workers):
             self.workers.append(Popen(command, stdout=DEVNULL, stderr=DEVNULL))
+
+
+    def serve_index(self):
+        return render_template('index.html')
 
 
     # socket event handlers
