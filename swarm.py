@@ -72,7 +72,7 @@ class SwarmBoss():
         input_as_array = np.array(lines)            # convert to np array format
         column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
         row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
-        data = input_as_array[1:, 1:].astype("float")
+        data = input_as_array[1:, 1:].astype('float')
         nrow, ncol = np.shape(data)
         return (nrow, ncol, column_labels.tolist(), row_labels.tolist(), data.tolist())
 

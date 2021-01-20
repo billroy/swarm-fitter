@@ -47,7 +47,9 @@ class FrequencyTableSolver():
         input_as_array = np.array(lines)            # convert to np array format
         self.column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
         self.row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
-        self.data = input_as_array[1:, 1:].astype("float")
+        self.data = input_as_array[1:, 1:]
+        self.data[self.data==''] = 0.0
+        self.data = self.data.astype("float")
         self.nrow, self.ncol = np.shape(self.data)
         print(f'row_labels: {self.row_labels}')
         print(f'column_labels: {self.column_labels}')

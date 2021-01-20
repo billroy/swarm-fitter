@@ -173,6 +173,7 @@ class SwarmBot():
 
                 t1 = time.time()
                 iterations = 10
+                random.seed()
                 self.solver.solve(iterations=iterations)
                 t2 = time.time()
                 print(f'solver iterations/sec:{iterations/(t2-t1)} error {self.solver.minimum_error}')
