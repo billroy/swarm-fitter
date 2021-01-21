@@ -98,6 +98,9 @@ class SwarmBoss():
             print('command:', msg)
 
             if msg['cmd'] == 'iam':
+                if self.args.kill_bots:
+                    self.socketio.emit('command', {'cmd': 'quit'})
+                    return
                 self.socketio.emit('command', {'cmd': 'update_job_data', 'job_data': self.job_data})
                 if self.solution is not None:
                     self.socketio.emit('command', {'cmd': 'update_solution', 'error': self.best_error, 'solution': self.solution})
@@ -154,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_file', default='degree by family income_6x12.csv')
     parser.add_argument('--output_file', default='output.json')
     parser.add_argument('--port', default=5000, type=int)
+    parser.add_argument('--kill_bots', default=0, type=int)
 
     args = parser.parse_args()
     print('args:', args)

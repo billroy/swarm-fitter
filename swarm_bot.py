@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime
 import os
+from subprocess import DEVNULL, Popen
 import random
 import sys
 import socketio
@@ -160,8 +161,9 @@ class SwarmBot():
         elif msg['cmd'] == 'stop':
             self.running = False
     
-        elif msg['cmd'] == 'endbot':
-            self.terminate()
+        elif msg['cmd'] == 'quit':
+            self.sio.disconnect()
+            os._exit(os.EX_OK)
 
         else:
             self.log('ignoring unrecognized message:', msg)
@@ -205,8 +207,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('swarm bot')
     parser.add_argument('--update_interval', default=2, type=int)
     parser.add_argument('--url', default='http://localhost:5000')
+    parser.add_argument('--workers', default=1, type=int)
     args = parser.parse_args()
     print('args:', args)
 
-    swarm_bot = SwarmBot(url=args.url)
-    #sio.wait()
+    if args.workers > 1:
+        workers = []
+        command = ['python3', 'swarm_bot.py']
+        for worker in range(args.workers):
+            workers.append(Popen(command, stdout=DEVNULL, stderr=DEVNULL))
+            for worker in workers:
+                worker.wait()
+
+    else:
+        swarm_bot = SwarmBot(url=args.url)
+        #sio.wait()
