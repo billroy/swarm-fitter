@@ -6,6 +6,7 @@ import os
 from subprocess import DEVNULL, Popen
 import random
 import sys
+import socket
 import socketio
 import threading
 import time
@@ -19,7 +20,7 @@ class SwarmBot():
         random.seed()
         self.server_url = url
         self.verbose = True
-        self.name = 'Solver-' + str(random.randrange(1000))
+        self.name = 'Solver-' + socket.gethostname() + '-' + str(random.randrange(1000))
         self.last_update_time = time.time()
         self.update_interval = 2
         self.best_error = None

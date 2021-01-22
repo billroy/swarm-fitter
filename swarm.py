@@ -64,6 +64,7 @@ class SwarmBoss():
 
     # initialize data
     def read_csv_data(self, file_name):
+        self.input_file_name = file_name
         print(f'loading file: {file_name}')
         with open(file_name, 'r') as infile:
             text = infile.read()
@@ -101,7 +102,7 @@ class SwarmBoss():
                 if self.args.kill_bots:
                     self.socketio.emit('command', {'cmd': 'quit'}, room=request.sid)
                     return
-                self.socketio.emit('command', {'cmd': 'update_job_data', 'job_data': self.job_data}, room=request.sid)
+                self.socketio.emit('command', {'cmd': 'update_job_data', 'filename': self.input_file_name, 'job_data': self.job_data}, room=request.sid)
                 if self.solution is not None:
                     self.socketio.emit('command', {'cmd': 'update_solution', 'error': self.best_error, 'solution': self.solution}, room=request.sid)
                 else:
@@ -109,6 +110,7 @@ class SwarmBoss():
 
             elif msg['cmd'] == 'error':
                 print(f'error: best_error: {self.best_error}')
+                self.socketio.emit('error', {'cmd': 'error', 'name': msg['name'], 'error': msg['error']})
                 if self.best_error == None or msg['error'] < self.best_error:
                     print(f"new best_error candidate: {msg['error']}")
                     self.socketio.emit('command', {'cmd': 'send_solution'}, room=request.sid)
@@ -119,6 +121,7 @@ class SwarmBoss():
                 if self.best_error == None or msg['error'] < self.best_error:
                     self.best_error = msg['error']
                     self.solution = msg
+                    #self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
 
         except Exception as e:
             print('exception in dispatch_command')

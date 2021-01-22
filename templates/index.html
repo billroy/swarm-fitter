@@ -95,6 +95,9 @@ select {
 .yo {
     background-color: mediumspringgreen;
 }
+.highlight {
+    font-weight: bold;
+}
 .active {
     background-color: mediumspringgreen;
 }
@@ -182,8 +185,8 @@ select {
             </div>
         </div>
         <div v-if=update_count>
-            <div class='row'>
-                <span class='col'>Filename:</span><span class='col'>{{solution.filename}}</span>
+            <div class='row' v-if='job_data'>
+                <span class='col'>Filename:</span><span class='col'>{{job_data.filename}}</span>
             </div>
             <div class='row'>
                 <span class='col'>Error:</span><span class='col'>{{solution.error}}</span>
@@ -209,7 +212,7 @@ select {
             <span class='col'>a</span>
         </div>
         <div v-for='(worker, name) in workers'>
-            <div class='row'>
+            <div class='row' v-bind:class='{highlight:worker.error<=solution.error}'>
                 <span class='col'>{{name}}</span>
                 <span class='col'>{{worker.error}}</span>
                 <span class='col'>{{worker.solution.a}}</span>
@@ -219,7 +222,7 @@ select {
 
     <div id='footer' class='row'>
         <div id='left_footer' class='col'>
-            <span>{{servertime}}</span>
+            <span>Time: {{servertime}}</span>
         </div>
         <div id='center_footer' class='col-6 copyright'>&nbsp;</div>
         <div id='right_footer' class='col'>
@@ -339,6 +342,13 @@ select {
                     default:
                         console.log('unknown command:', msg)
                 }
+            });
+            Pushit.on('error', function(msg) {
+                console.log(msg)
+                if (msg.name in vm.workers) {
+                    vm.workers[msg.name].error = msg.error;
+                }
+                else vm.workers[msg.name] = {name: msg.name, error: msg.error, solution: {a:''}};
             });
             Pushit.on('time', function(msg) {
                 vm.servertime = new Date().toLocaleString();
