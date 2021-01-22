@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         
-    <title>id:xtable</title>
+    <title>SwarmSolver</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"  crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" crossorigin="anonymous"></script>
@@ -119,8 +119,8 @@ select {
     margin-top: 5px;
     font-size: 10px;
 }
-#stage {
-    height: 53vh;
+#worker_status_panel {
+    height: 50vh;
 }
 
 .red_background {
@@ -175,10 +175,10 @@ select {
         </div>
     </div>
 
-    <div id='status_panel' class='info_panel round'>
+    <div id='job_status_panel' class='info_panel round'>
         <div class='row info_panel_header'>
             <div class='col'>
-                <span>Solver Status</span>
+                <span>Job Status</span>
             </div>
         </div>
         <div v-if=update_count>
@@ -193,6 +193,26 @@ select {
             </div>
             <div class='row'>
                 <span class='col'>Update count:</span><span class='col'>{{update_count}}</span>
+            </div>
+        </div>
+    </div>
+
+    <div id='worker_status_panel' class='info_panel round'>
+        <div class='row info_panel_header'>
+            <div class='col'>
+                <span>Worker Status</span>
+            </div>
+        </div>
+        <div class='row'>
+            <span class='col'>ID</span>
+            <span class='col'>Error</span>
+            <span class='col'>a</span>
+        </div>
+        <div v-for='(worker, name) in workers'>
+            <div class='row'>
+                <span class='col'>{{name}}</span>
+                <span class='col'>{{worker.error}}</span>
+                <span class='col'>{{worker.solution.a}}</span>
             </div>
         </div>
     </div>
@@ -281,10 +301,10 @@ select {
             status: 'connecting...',
             error: '',
             solution: '',
-            solutions: '',
+            workers: {},
             update_count: 0,
             servertime: '',
-            servername: 'Watcher-' + Math.floor(Math.random() * 1000)
+            servername: 'Watcher-' + Math.floor(Math.random() * 1000),
         },
         created: function() {
             console.log('Vue up...');
@@ -304,13 +324,13 @@ select {
                     case 'update_solution':
                         vm.error = msg.error;
                         if (!('filename' in msg.solution)) msg.solution.filename = '';
-                        vm.solutions[msg.name] = msg.solution;
+                        vm.workers[msg.solution.name] = msg.solution;
                         vm.solution = msg.solution;
                         vm.update_count++;
                         break;
 
                     case 'update_job_data':
-                        self.job_data = msg
+                        vm.job_data = msg
                         break;
 
                     case 'random_start':
