@@ -184,19 +184,17 @@ select {
                 <span>Job Status</span>
             </div>
         </div>
-        <div v-if=update_count>
-            <div class='row' v-if='job_data'>
-                <span class='col'>Filename:</span><span class='col'>{{job_data.filename}}</span>
-            </div>
-            <div class='row'>
-                <span class='col'>Error:</span><span class='col'>{{solution.error}}</span>
-            </div>
-            <div class='row'>
-                <span class='col'>Last update:</span><span class='col'>{{solution.name}}</span>
-            </div>
-            <div class='row'>
-                <span class='col'>Update count:</span><span class='col'>{{update_count}}</span>
-            </div>
+        <div class='row' v-if='"filename" in job_data'>
+            <span class='col'>Filename:</span><span class='col'>{{job_data.filename}}</span>
+        </div>
+        <div class='row' v-if='"error" in solution'>
+            <span class='col'>Error:</span><span class='col'>{{solution.error}}</span>
+        </div>
+        <div class='row' v-if='"name"' in solution>
+            <span class='col'>Last update:</span><span class='col'>{{solution.name}}</span>
+        </div>
+        <div class='row'>
+            <span class='col'>Update count:</span><span class='col'>{{update_count}}</span>
         </div>
     </div>
 
@@ -303,7 +301,8 @@ select {
         data: {
             status: 'connecting...',
             error: '',
-            solution: '',
+            job_data: {},
+            solution: {},
             workers: {},
             update_count: 0,
             servertime: '',
