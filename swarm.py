@@ -18,7 +18,7 @@ class BossIO(Namespace):
 
     def on_connect(self):
         global boss
-        boss.handle_connect()    
+        boss.handle_connect()
 
     def on_disconnect(self):
         pass
@@ -88,10 +88,10 @@ class SwarmBoss():
     def serve_index(self):
         return render_template('index.html')
 
-
     # socket event handlers
     def handle_connect(self):
         print(datetime.now(), 'connect::', request.sid, request.host_url, request.headers, request.remote_addr, request.remote_user)
+
 
     def handle_command(self, msg):
         try:
@@ -99,19 +99,19 @@ class SwarmBoss():
 
             if msg['cmd'] == 'iam':
                 if self.args.kill_bots:
-                    self.socketio.emit('command', {'cmd': 'quit'})
+                    self.socketio.emit('command', {'cmd': 'quit'}, room=request.sid)
                     return
-                self.socketio.emit('command', {'cmd': 'update_job_data', 'job_data': self.job_data})
+                self.socketio.emit('command', {'cmd': 'update_job_data', 'job_data': self.job_data}, room=request.sid)
                 if self.solution is not None:
-                    self.socketio.emit('command', {'cmd': 'update_solution', 'error': self.best_error, 'solution': self.solution})
+                    self.socketio.emit('command', {'cmd': 'update_solution', 'error': self.best_error, 'solution': self.solution}, room=request.sid)
                 else:
-                    self.socketio.emit('command', {'cmd': 'random_start'})
+                    self.socketio.emit('command', {'cmd': 'random_start'}, room=request.sid)
 
             elif msg['cmd'] == 'error':
                 print(f'error: best_error: {self.best_error}')
                 if self.best_error == None or msg['error'] < self.best_error:
                     print(f"new best_error candidate: {msg['error']}")
-                    self.socketio.emit('command', {'cmd': 'send_solution'})
+                    self.socketio.emit('command', {'cmd': 'send_solution'}, room=request.sid)
                 else:
                     print(f'ignoring inferior error: {self.best_error} {msg["error"]}')
             
@@ -125,6 +125,7 @@ class SwarmBoss():
             print(str(e))
             print(sys.exc_info()[0])
             print(traceback.format_exc())
+
 
     def solver_task(self):
         while True:

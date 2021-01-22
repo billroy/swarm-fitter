@@ -183,7 +183,7 @@ class SwarmBot():
                 now = time.time()
                 if self.solution_update != None:
                     print(f'solver_task: updating solution {self.solution_update}')
-                    if self.solution_update['error'] < self.solver.minimum_error:
+                    if self.solution_update['solution']['error'] < self.solver.minimum_error:
                         print(f'updating solution from server')
                         self.solver.update_solution(self.solution_update['solution'])
                         self.solution_update = None

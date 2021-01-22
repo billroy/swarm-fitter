@@ -245,6 +245,11 @@ select {
                 vm.status = 'Connected';
                 console.log('Socket.io connected');
                 Pushit.socket.emit('ping', {data: new Date().getTime()});
+                Pushit.socket.emit('command', {
+                    cmd: 'iam',
+                    name: vm.servername,
+                    bot: 'w1'
+                })
             });
 
             this.socket.on('disconnect', function() {
@@ -278,7 +283,8 @@ select {
             solution: '',
             solutions: '',
             update_count: 0,
-            servertime: ''
+            servertime: '',
+            servername: 'Watcher-' + Math.floor(Math.random() * 1000)
         },
         created: function() {
             console.log('Vue up...');
@@ -302,10 +308,14 @@ select {
                         vm.solution = msg.solution;
                         vm.update_count++;
                         break;
-                    
-                    case 'send_solution':   // bug: we shouldn't get these
+
+                    case 'update_job_data':
+                        self.job_data = msg
                         break;
-                    
+
+                    case 'random_start':
+                        break;
+
                     default:
                         console.log('unknown command:', msg)
                 }
@@ -315,19 +325,6 @@ select {
             });
         },
         methods: {
-
-            foo: function() {
-                Pushit.send(table_channel, {
-                    cmd: 'claim', 
-                    name: vm.name,
-                    seat: vm.seat,
-                    player: vm.seat,
-                    tricks_claimed: tricks_claimed,
-                    tricks_conceded: tricks_remaining - tricks_claimed,
-                    explanation: vm.claim_explanation_input
-                });
-                $('#confirm_claim').modal('hide');
-            }
         },
         watch: {
         }
