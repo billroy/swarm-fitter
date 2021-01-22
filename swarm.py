@@ -118,7 +118,7 @@ class SwarmBoss():
             elif msg['cmd'] == 'solution':
                 if self.best_error == None or msg['error'] < self.best_error:
                     self.best_error = msg['error']
-                    self.solution = msg['solution']
+                    self.solution = msg
 
         except Exception as e:
             print('exception in dispatch_command')
@@ -136,7 +136,7 @@ class SwarmBoss():
                 if self.best_error != None and (self.last_best_error == None or self.best_error < self.last_best_error):
                     self.last_best_error = self.best_error
                     print(f'sending updated solution: {self.best_error}')
-                    self.socketio.emit('command', {'cmd': 'update_solution', 'error': self.best_error, 'solution': self.solution}, broadcast=True)
+                    self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
 
             self.socketio.sleep(1)
 
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     parser.add_argument('--update_interval', default=5, type=int)
     parser.add_argument('--workers', default=0, type=int)
     parser.add_argument('--bot_update_interval', default=5, type=int)
-    parser.add_argument('--input_file', default='degree by family income_6x12.csv')
+    parser.add_argument('--input_file', default='data/degree by family income_6x12.csv')
     parser.add_argument('--output_file', default='output.json')
     parser.add_argument('--port', default=5000, type=int)
     parser.add_argument('--kill_bots', default=0, type=int)
@@ -175,4 +175,4 @@ if __name__ == '__main__':
         boss.socketio.run(boss.app, debug=False, port=port, host='0.0.0.0')
     else:
         print(f'starting on 0.0.0.0:{args.port}')
-        boss.socketio.run(boss.app, port=args.port, host='0.0.0.0')
+        boss.socketio.run(boss.app, debug=False, port=args.port, host='0.0.0.0')

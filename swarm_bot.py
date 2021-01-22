@@ -124,9 +124,9 @@ class SwarmBot():
 
         elif msg['cmd'] == 'update_solution':
             print(f'update_solution: solver.minimum_error: {self.solver.minimum_error}')
-            if self.solver.minimum_error == None or msg['error'] < self.solver.minimum_error:
+            if self.solver.minimum_error == None or msg['solution']['error'] < self.solver.minimum_error:
                 self.solution_update = msg
-                self.best_error = self.last_best_error = msg['error']
+                self.best_error = self.last_best_error = msg['solution']['error']
                 print(f'updated solution: {self.solver.minimum_error} {self.best_error}')
             self.running = True
 
@@ -185,7 +185,7 @@ class SwarmBot():
                     print(f'solver_task: updating solution {self.solution_update}')
                     if self.solution_update['error'] < self.solver.minimum_error:
                         print(f'updating solution from server')
-                        self.solver.update_solution(self.solution_update)
+                        self.solver.update_solution(self.solution_update['solution'])
                         self.solution_update = None
                         self.last_update_time = now
 
