@@ -141,18 +141,10 @@ select {
 .dropdown-item:hover {
     color: white !important;
     background-color: var(--main-bg-color);
-}
-#left_hand_bid_table {
-    color: black;
-    background-color: white;
-}
-.alt:nth-child(odd) {
+}.some_panel:nth-child(odd) {
     background-color: gainsboro;
 }
-.bid_table_alt:nth-child(odd) {
-    background-color: gainsboro;
-}
-.bid_table_alt:nth-child(even) {
+.some_panel:nth-child(even) {
     background-color: silver;
 }
 
@@ -204,12 +196,12 @@ select {
                 <span>Worker Status</span>
             </div>
         </div>
-        <div class='row'>
+        <div class='row info_panel_header'>
             <span class='col'>ID</span>
             <span class='col'>Error</span>
             <span class='col'>a</span>
         </div>
-        <div v-for='(worker, name) in workers'>
+        <div v-for='(worker, name) in workers' class='list_panel'>
             <div class='row' v-bind:class='{highlight:worker.error<=solution.error}'>
                 <span class='col'>{{name}}</span>
                 <span class='col'>{{worker.error}}</span>

@@ -206,7 +206,7 @@ class FrequencyTableSolver():
                 self.rm[i] = rm
                 self.rm_delta[i] **= .5
         #print(f'rm: {1e6*(time.time()-t1)}')
-        return(('rm', i, self.rm[i], self.rm_delta[i]))
+        #return(('rm', i, self.rm[i], self.rm_delta[i]))
 
     def twiddle_column_multiplier(self, i):
         cm = self.cm[i]
@@ -224,7 +224,7 @@ class FrequencyTableSolver():
             else:
                 self.cm[i] = cm
                 self.cm_delta[i] **= .5
-        return(('cm', i, self.cm[i], self.cm_delta[i]))
+        #return(('cm', i, self.cm[i], self.cm_delta[i]))
 
     def twiddle_row_coordinate(self, i):
         rx = self.rx[i]
@@ -242,7 +242,7 @@ class FrequencyTableSolver():
             else:
                 self.rx[i] = rx
                 self.rx_delta[i] *= .5
-        return(('rx', i, self.rx[i], self.rx_delta[i]))
+        #return(('rx', i, self.rx[i], self.rx_delta[i]))
 
     def twiddle_column_coordinate(self, i):
         cx = self.cx[i]
@@ -260,7 +260,7 @@ class FrequencyTableSolver():
             else:
                 self.cx[i] = cx
                 self.cx_delta[i] *= .5
-        return(('cx', i, self.cx[i], self.cx_delta[i]))
+        #return(('cx', i, self.cx[i], self.cx_delta[i]))
 
     def twiddle_a(self, i):
         a = self.a
@@ -278,7 +278,7 @@ class FrequencyTableSolver():
             else:
                 self.a = a
                 self.a_delta += .0001
-        return(('a', i, self.a, self.a_delta))
+        #return(('a', i, self.a, self.a_delta))
 
 
     def initialize_deltas(self):
@@ -302,7 +302,7 @@ class FrequencyTableSolver():
     def solve(self, iterations=1):
         #print('Solving...', iterations)
         self.t_solve_start = time.time()
-        cutoff_ratio = .999995
+        #cutoff_ratio = .999995
 
         #random.seed()
         self.initialize_deltas()
@@ -329,7 +329,8 @@ class FrequencyTableSolver():
 
     def twiddle_one_parameter(self, parameter):
         #print('twiddle:', parameter[2], parameter[1])
-        return parameter[0](parameter[1])
+        #return parameter[0](parameter[1])
+        parameter[0](parameter[1])
 
 
     def update_parameter(self, update):
