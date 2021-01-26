@@ -130,6 +130,13 @@ class SwarmBoss():
             print(traceback.format_exc())
 
 
+    def log_solution(self):
+        output_file = self.input_file_name.split('/')[-1].replace('.csv', '.json')
+        print(f'saving solution: {output_file}')
+        with open('output/' + output_file, 'a') as f:
+            f.write(json.dumps(self.solution) + '\n')
+
+
     def solver_task(self):
         while True:
             print(f'solver task {self.best_error} {self.last_best_error}')
@@ -141,6 +148,7 @@ class SwarmBoss():
                     self.last_best_error = self.best_error
                     print(f'sending updated solution: {self.best_error}')
                     self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
+                    self.log_solution()
 
             self.socketio.sleep(1)
 
