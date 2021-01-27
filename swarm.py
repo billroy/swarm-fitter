@@ -194,7 +194,7 @@ class SwarmBoss():
         ax3.imshow(self.data, cmap='Blues', interpolation='nearest')    
     
         plt.savefig('output/' + self.chart_file_name)
-        fig.close()
+        plt.close()
         t_end = time.time()
         print(f'chart update time: {t_end-t_start} {self.chart_file_name}')
         return self.chart_file_name
