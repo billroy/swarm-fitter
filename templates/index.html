@@ -76,6 +76,9 @@ select {
     color: var(--main-bg-color);
     background-color: white;
 }
+#chart_panel {
+    height: 20vh;
+}
 .footer {
     font-size: 15px;
     margin: 1em 0 0 0;
@@ -211,6 +214,10 @@ select {
         </div>
     </div>
 
+    <div v-if='chart_url' id='chart_panel' class='round'>
+        <img class='chart' :src='chart_url'>
+    </div>
+
     <div id='footer' class='row'>
         <div id='left_footer' class='col'>
             <span>Time: {{servertime}}</span>
@@ -300,6 +307,7 @@ select {
             update_count: 0,
             servertime: '',
             servername: 'Watcher-' + Math.floor(Math.random() * 1000),
+            chart_url: ''
         },
         created: function() {
             console.log('Vue up...');
@@ -335,6 +343,7 @@ select {
                         console.log('unknown command:', msg)
                 }
             });
+
             Pushit.on('error', function(msg) {
                 console.log(msg)
                 if (msg.name in vm.workers) {
@@ -342,6 +351,12 @@ select {
                 }
                 else vm.workers[msg.name] = {name: msg.name, error: msg.error, solution: {a:''}};
             });
+
+            Pushit.on('chart', function(msg) {
+                console.log(msg)
+                vm.chart_url = msg.chart_url;
+            });
+
             Pushit.on('time', function(msg) {
                 vm.servertime = new Date().toLocaleString();
             });

@@ -14,6 +14,12 @@ import threading
 import time
 import traceback
 
+# use matplotlib without gui
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.ticker as plticker
+
 class BossIO(Namespace):
 
     def on_connect(self):
@@ -47,6 +53,7 @@ class SwarmBoss():
         self.app = CustomFlask(__name__)
         self.app.config['SECRET_KEY'] = 'secret-sauce!'
         self.app.route('/')(self.serve_index)
+        self.app.route('/chart')(self.serve_chart)
         self.socketio = SocketIO(self.app, always_connect=True)
         self.socketio.on_namespace(BossIO('/'))
 
@@ -56,6 +63,7 @@ class SwarmBoss():
         self.best_error = None
         self.last_best_error = None
         self.last_update_time = time.time()
+        self.chart_number = 0
 
         self.workers = []
         if args.workers > 0:
@@ -71,11 +79,11 @@ class SwarmBoss():
         lines = text.split('\n')                    # split file in to lines separated by the invisible character \r
         lines = [line.split(',') for line in lines] # convert each line to a list of its column values
         input_as_array = np.array(lines)            # convert to np array format
-        column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
-        row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
-        data = input_as_array[1:, 1:].astype('float')
-        nrow, ncol = np.shape(data)
-        return (nrow, ncol, column_labels.tolist(), row_labels.tolist(), data.tolist())
+        self.column_labels = input_as_array[0,1:]   # first column of array (from second row to end)
+        self.row_labels = input_as_array[1:,0]      # first row of array (from second column to endd)
+        self.data = input_as_array[1:, 1:].astype('float')
+        self.nrow, self.ncol = np.shape(self.data)
+        return (self.nrow, self.ncol, self.column_labels.tolist(), self.row_labels.tolist(), self.data.tolist())
 
 
     def start_workers(self, num_workers):
@@ -88,6 +96,9 @@ class SwarmBoss():
 
     def serve_index(self):
         return render_template('index.html')
+
+    def serve_chart(self):
+        return send_file('output/' + self.chart_file_name, mimetype='image/png')
 
     # socket event handlers
     def handle_connect(self):
@@ -131,10 +142,61 @@ class SwarmBoss():
 
 
     def log_solution(self):
-        output_file = self.input_file_name.split('/')[-1].replace('.csv', '.json')
-        print(f'saving solution: {output_file}')
-        with open('output/' + output_file, 'a') as f:
+        log_file = self.input_file_name.split('/')[-1].replace('.csv', '.json')
+        print(f'saving solution: {log_file}')
+        with open('output/' + log_file, 'a') as f:
             f.write(json.dumps(self.solution) + '\n')
+
+
+    def update_chart(self):
+
+        if not self.solution:
+            print('aborting update_chart: no solution')
+            return ''
+
+        t_start = time.time()
+        self.chart_file_name = self.input_file_name.split('/')[-1].replace('.csv', '.png').replace(' ', '_')
+        print(f'updating chart: {self.chart_file_name}')
+        solution = self.solution['solution']
+
+        fig = plt.figure()
+        fig.set_size_inches(14, 14, forward=True)
+        fig.subplots_adjust(hspace=.3)
+        #loc = plticker.MultipleLocator(base=30)
+
+        # column analysis
+        ax = fig.add_subplot(3,1,1,
+            title = 'Column Coordinates and Multipliers',
+            xlabel = 'Column Coordinate',
+            ylabel = 'Column Multiplier')
+        ax.plot(solution['cx'], solution['cm'])
+        props = {'color':'black'}
+        for i in range(len(solution['cx'])):
+            cm = solution['cm'][i]
+            ax.text(solution['cx'][i], 10, f'{self.column_labels[i]} ({i} : {cm:0.3f})', props, rotation=90)
+
+        # row analysis
+        ax2 = fig.add_subplot(3,1,2, 
+            title = 'Row Coordinates and Multipliers',
+            xlabel = 'Row Coordinate',
+            ylabel = 'Row Multiplier')
+        ax2.plot(solution['rx'], solution['rm'])
+        props = {'color':'black'}
+        for i in range(len(solution['rx'])):
+            rm = solution['rm'][i]
+            ax2.text(solution['rx'][i], 2, f'{self.row_labels[i]} ({i} : {rm:0.3f})', props, rotation=90)
+
+        # data heatmap
+        ax3 = fig.add_subplot(3,1,3, 
+            title = 'Data Heat Map',
+            xlabel = 'Column',
+            ylabel = 'Row')
+        ax3.imshow(self.data, cmap='Blues', interpolation='nearest')    
+    
+        plt.savefig('output/' + self.chart_file_name)
+        t_end = time.time()
+        print(f'chart update time: {t_end-t_start} {self.chart_file_name}')
+        return self.chart_file_name
 
 
     def solver_task(self):
@@ -149,6 +211,12 @@ class SwarmBoss():
                     print(f'sending updated solution: {self.best_error}')
                     self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
                     self.log_solution()
+                    if self.update_chart():
+                        self.chart_number += 1
+                        self.socketio.emit('chart', {
+                            'cmd': 'update_chart', 
+                            'chart_url': '/chart?id=' + str(self.chart_number)
+                        }, broadcast=True)
 
             self.socketio.sleep(1)
 
@@ -167,7 +235,6 @@ if __name__ == '__main__':
     parser.add_argument('--workers', default=0, type=int)
     parser.add_argument('--bot_update_interval', default=5, type=int)
     parser.add_argument('--input_file', default='data/degree by family income_6x12.csv')
-    parser.add_argument('--output_file', default='output.json')
     parser.add_argument('--port', default=5000, type=int)
     parser.add_argument('--kill_bots', default=0, type=int)
 
