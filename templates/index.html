@@ -67,8 +67,8 @@ select {
     padding: 0px 10px 5px 10px;
     font-size: 2vh;
     text-align: left;
-    height: 17vh;
-    overflow: hidden;
+    height: 25vh;
+    overflow-x: scroll;
     margin: 0px -13px 0px -13px;
 }
 .info_panel_header {
@@ -76,8 +76,8 @@ select {
     color: var(--main-bg-color);
     background-color: white;
 }
-#chart_panel {
-    height: 20vh;
+.chart {
+    height: 70vh;
 }
 .footer {
     font-size: 15px;
@@ -125,9 +125,6 @@ select {
     margin-top: 5px;
     font-size: 10px;
 }
-#worker_status_panel {
-    height: 50vh;
-}
 
 .red_background {
     background-color: red;
@@ -174,53 +171,60 @@ select {
         </div>
     </div>
 
-    <div id='job_status_panel' class='info_panel round'>
-        <div class='row info_panel_header'>
-            <div class='col'>
-                <span>Job Status</span>
+    <div id='top_panel' class='row'>
+
+        <div class='col-6'>
+            <div id='job_status_panel' class='info_panel round'>
+                <div class='row info_panel_header'>
+                    <div class='col'>
+                        <span>Job Status</span>
+                    </div>
+                </div>
+                <div class='row' v-if='"filename" in job_data'>
+                    <span class='col'>Filename:</span><span class='col'>{{job_data.filename}}</span>
+                </div>
+                <div class='row' v-if='"error" in solution'>
+                    <span class='col'>Error:</span><span class='col'>{{solution.error}}</span>
+                </div>
+                <div class='row' v-if='"name"' in solution>
+                    <span class='col'>Last update:</span><span class='col'>{{solution.name}}</span>
+                </div>
+                <div class='row'>
+                    <span class='col'>Update count:</span><span class='col'>{{update_count}}</span>
+                </div>
             </div>
         </div>
-        <div class='row' v-if='"filename" in job_data'>
-            <span class='col'>Filename:</span><span class='col'>{{job_data.filename}}</span>
-        </div>
-        <div class='row' v-if='"error" in solution'>
-            <span class='col'>Error:</span><span class='col'>{{solution.error}}</span>
-        </div>
-        <div class='row' v-if='"name"' in solution>
-            <span class='col'>Last update:</span><span class='col'>{{solution.name}}</span>
-        </div>
-        <div class='row'>
-            <span class='col'>Update count:</span><span class='col'>{{update_count}}</span>
+
+        <div class='col-6'>
+            <div id='worker_status_panel' class='info_panel round'>
+                <div class='row info_panel_header'>
+                    <div class='col'>
+                        <span>Worker Status</span>
+                    </div>
+                </div>
+                <div class='row info_panel_header'>
+                    <span class='col'>ID</span>
+                    <span class='col'>Error</span>
+                    <span class='col'>a</span>
+                </div>
+                <div v-for='(worker, name) in workers' class='list_panel'>
+                    <div class='row' v-bind:class='{highlight:worker.error<=solution.error}'>
+                        <span class='col'>{{name}}</span>
+                        <span class='col'>{{worker.error}}</span>
+                        <span class='col'>{{worker.solution.a}}</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id='worker_status_panel' class='info_panel round'>
-        <div class='row info_panel_header'>
-            <div class='col'>
-                <span>Worker Status</span>
-            </div>
-        </div>
-        <div class='row info_panel_header'>
-            <span class='col'>ID</span>
-            <span class='col'>Error</span>
-            <span class='col'>a</span>
-        </div>
-        <div v-for='(worker, name) in workers' class='list_panel'>
-            <div class='row' v-bind:class='{highlight:worker.error<=solution.error}'>
-                <span class='col'>{{name}}</span>
-                <span class='col'>{{worker.error}}</span>
-                <span class='col'>{{worker.solution.a}}</span>
-            </div>
-        </div>
-    </div>
-
-    <div v-if='chart_url' id='chart_panel' class='round'>
+    <div v-if='chart_url' id='chart_panel'>
         <img class='chart' :src='chart_url'>
     </div>
 
     <div id='footer' class='row'>
         <div id='left_footer' class='col'>
-            <span>Time: {{servertime}}</span>
+            <span>{{servertime}}</span>
         </div>
         <div id='center_footer' class='col-6 copyright'>&nbsp;</div>
         <div id='right_footer' class='col'>
