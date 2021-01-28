@@ -150,7 +150,8 @@ class SwarmBot():
                     'cx': self.solver.cx.tolist(),
                     'rm': self.solver.rm.tolist(),
                     'cm': self.solver.cm.tolist(),
-                    'a': self.solver.a
+                    'a': self.solver.a,
+                    'fitted_frequencies': self.solver.fitted_frequencies.tolist()
                 }
             }
             #print(f'sending solution: {solution}')

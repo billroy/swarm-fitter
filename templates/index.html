@@ -335,6 +335,7 @@ select {
                         vm.workers[msg.solution.name] = msg.solution;
                         vm.solution = msg.solution;
                         vm.update_count++;
+                        vm.status = 'Best error: ' + msg.solution.error;
                         break;
 
                     case 'update_job_data':
@@ -358,7 +359,7 @@ select {
             });
 
             Pushit.on('chart', function(msg) {
-                console.log(msg)
+                console.log('chart:', msg)
                 vm.chart_url = msg.chart_url;
             });
 

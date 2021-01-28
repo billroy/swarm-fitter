@@ -32,3 +32,13 @@ Start additional workers in separate terminals for better log visibility,
     python3 swarm_bot.py --url=http://foobar.local
     
 
+Tricks:
+-------
+
+Use 'jq' in --slurp mode to parse the line-by-line json output file
+
+    # find the best error in a solution file:
+    cat 'output/degree by family income_6x12.json' | jq --slurp '.[].error' | sort -n | head
+
+    # show the values of 'a':
+    cat 'output/degree by family income_6x12.json' | jq --slurp '.[].solution.a' | sort -n | head

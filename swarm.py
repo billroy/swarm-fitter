@@ -8,6 +8,7 @@ import json
 import multiprocessing as mp
 import numpy as np
 import os
+import random
 from subprocess import DEVNULL, Popen
 import sys
 import threading
@@ -97,8 +98,11 @@ class SwarmBoss():
     def serve_index(self):
         return render_template('index.html')
 
+
     def serve_chart(self):
+        print(f'serve_chart: {self.chart_file_name}')
         return send_file('output/' + self.chart_file_name, mimetype='image/png')
+
 
     # socket event handlers
     def handle_connect(self):
@@ -162,6 +166,7 @@ class SwarmBoss():
         fig = plt.figure()
         fig.set_size_inches(14, 14, forward=True)
         fig.subplots_adjust(hspace=.3)
+        fig.suptitle(f'Swarm solution: error={self.solution["error"]} a={solution["a"]}', fontsize='xx-large')
         #loc = plticker.MultipleLocator(base=30)
 
         # column analysis
@@ -169,29 +174,33 @@ class SwarmBoss():
             title = 'Column Coordinates and Multipliers',
             xlabel = 'Column Coordinate',
             ylabel = 'Column Multiplier')
-        ax.plot(solution['cx'], solution['cm'])
+        ax.scatter(solution['cx'], solution['cm'])
         props = {'color':'black'}
+        bottom, top = ax.get_ylim()
+        text_base = bottom + 0.05 * (top-bottom)
         for i in range(len(solution['cx'])):
             cm = solution['cm'][i]
-            ax.text(solution['cx'][i], 10, f'{self.column_labels[i]} ({i} : {cm:0.3f})', props, rotation=90)
+            ax.text(solution['cx'][i], text_base, f'{self.column_labels[i]} ({i} : {cm:0.3f})', props, rotation=90)
 
         # row analysis
         ax2 = fig.add_subplot(3,1,2, 
             title = 'Row Coordinates and Multipliers',
             xlabel = 'Row Coordinate',
             ylabel = 'Row Multiplier')
-        ax2.plot(solution['rx'], solution['rm'])
+        ax2.scatter(solution['rx'], solution['rm'])
         props = {'color':'black'}
+        bottom, top = ax2.get_ylim()
+        text_base = bottom + 0.05 * (top-bottom)
         for i in range(len(solution['rx'])):
             rm = solution['rm'][i]
-            ax2.text(solution['rx'][i], 2, f'{self.row_labels[i]} ({i} : {rm:0.3f})', props, rotation=90)
+            ax2.text(solution['rx'][i], text_base, f'{self.row_labels[i]} ({i} : {rm:0.3f})', props, rotation=90)
 
         # data heatmap
         ax3 = fig.add_subplot(3,1,3, 
-            title = 'Data Heat Map',
+            title = 'Error Heat Map',
             xlabel = 'Column',
             ylabel = 'Row')
-        ax3.imshow(self.data, cmap='Blues', interpolation='nearest')    
+        ax3.imshow(self.data - solution['fitted_frequencies'], cmap='Reds', interpolation='nearest')
     
         plt.savefig('output/' + self.chart_file_name)
         plt.close()
@@ -216,7 +225,7 @@ class SwarmBoss():
                         self.chart_number += 1
                         self.socketio.emit('chart', {
                             'cmd': 'update_chart', 
-                            'chart_url': '/chart?id=' + str(self.chart_number)
+                            'chart_url': '/chart?id=' + str(random.random())
                         }, broadcast=True)
 
             self.socketio.sleep(1)
