@@ -137,7 +137,13 @@ class SwarmBoss():
             elif msg['cmd'] == 'solution':
                 if self.best_error == None or msg['error'] < self.best_error:
                     self.best_error = msg['error']
+
+                    # pull off the fitted_frequencies and delete them; the workers don't need it, and it's big
+                    self.fitted_frequencies = msg['solution']['fitted_frequencies']
                     self.solution = msg
+                    del self.solution['solution']['fitted_frequencies']
+
+                    # could immediately update the other workers here
                     #self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
 
         except Exception as e:
@@ -202,7 +208,7 @@ class SwarmBoss():
             title = 'Error Heat Map',
             xlabel = 'Column',
             ylabel = 'Row')
-        ax3.imshow(self.data - solution['fitted_frequencies'], cmap='bwr', interpolation='nearest')
+        ax3.imshow(self.data - self.fitted_frequencies, cmap='bwr', interpolation='nearest')
     
         plt.savefig('output/' + self.chart_file_name)
         plt.close()
