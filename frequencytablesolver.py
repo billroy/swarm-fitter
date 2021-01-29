@@ -107,7 +107,13 @@ class FrequencyTableSolver():
     def standardize_multipliers(self):
         #standardize row multipliers and column multipliers to a common geometric mean
         row_geomean = self.rm.prod()**(1 / self.nrow)
+        if row_geomean == 0.0: raise Exception(f'Data error: Row geometric mean is zero.  Check for all-zero rows.')
+
         col_geomean = self.cm.prod()**(1 / self.ncol)
+        if col_geomean == 0.0: raise Exception(f'Data error: Column geometric mean is zero.  Check for all-zero columns.')
+
+        #print(f'standardize_multipliers: row_geomean={row_geomean}, col_geomean={col_geomean}, common_mean={common_mean}')
+
         common_mean = (row_geomean * col_geomean)**.5
         self.rm = self.rm * (common_mean / row_geomean)
         self.cm = self.cm * (common_mean / col_geomean)
