@@ -167,6 +167,7 @@ class SwarmBoss():
             return ''
 
         t_start = time.time()
+        self.chart_number += 1
         self.chart_file_name = self.input_file_name.split('/')[-1].replace('.csv', '.png').replace(' ', '_')
         print(f'updating chart: {self.chart_file_name}')
         solution = self.solution['solution']
@@ -174,7 +175,7 @@ class SwarmBoss():
         fig = plt.figure()
         fig.set_size_inches(14, 14, forward=True)
         fig.subplots_adjust(hspace=.3)
-        fig.suptitle(f'Swarm solution: error={self.solution["error"]} a={solution["a"]}', fontsize='xx-large')
+        fig.suptitle(f'Swarm solution {self.chart_number}: error={self.solution["error"]} a={solution["a"]}', fontsize='xx-large')
         #loc = plticker.MultipleLocator(base=30)
 
         # column analysis
@@ -230,7 +231,6 @@ class SwarmBoss():
                     self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
                     self.log_solution()
                     if self.update_chart():
-                        self.chart_number += 1
                         self.socketio.emit('chart', {
                             'cmd': 'update_chart', 
                             'chart_url': '/chart?id=' + str(random.random())
@@ -239,19 +239,14 @@ class SwarmBoss():
             self.socketio.sleep(1)
 
 
-#@app.route('/')
-#def index():
-#    return render_template('index.html')
-
 
 if __name__ == '__main__':
 
     # parse command line arguments
     default_workers = mp.cpu_count()
-    parser = argparse.ArgumentParser('swarm controller')
+    parser = argparse.ArgumentParser('python3 swarm.py')
     parser.add_argument('--update_interval', default=5, type=int)
     parser.add_argument('--workers', default=0, type=int)
-    parser.add_argument('--bot_update_interval', default=5, type=int)
     parser.add_argument('--input_file', default='data/degree by family income_6x12.csv')
     parser.add_argument('--port', default=5000, type=int)
     parser.add_argument('--kill_bots', default=0, type=int)

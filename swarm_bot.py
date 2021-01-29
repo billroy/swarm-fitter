@@ -206,7 +206,7 @@ class SwarmBot():
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser('swarm bot')
+    parser = argparse.ArgumentParser('python3 swarm_bot.py')
     parser.add_argument('--update_interval', default=2, type=int)
     parser.add_argument('--url', default='http://localhost:5000')
     parser.add_argument('--workers', default=1, type=int)
