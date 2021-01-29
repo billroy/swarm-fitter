@@ -38,7 +38,36 @@ Tricks:
 Use 'jq' in --slurp mode to parse the line-by-line json output file
 
     # find the best error in a solution file:
-    cat 'output/degree by family income_6x12.json' | jq --slurp '.[].error' | sort -n | head
+    cat 'output/degree by family income_6x12.json' | jq --slurp '.[].error' | sort -n | head -n 1
 
     # show the values of 'a':
     cat 'output/degree by family income_6x12.json' | jq --slurp '.[].solution.a' | sort -n | head
+
+Use 'tail' to pluck out a particular solution by line number
+
+    # use 'tail' to pluck out the last saved solution and send it to jq to display the error:
+    tail -n 1 'output/Senate_Votes 115-v2.json' | jq '.error'
+
+Use 'pysparklines' to look at a thumbnail graph
+
+    # sparkline of errors
+    cat 'output/Senate_Votes 115-v2.json' | jq '.error' | sparkline
+    ▇▃▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+    # alternate form: sparkline of errors
+    jq '.error' 'output/Senate_Votes 115-v2.json'| sparkline
+    ▇▃▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+    # sparkline of 'a' values
+    cat 'output/Senate_Votes 115-v2.json' | jq '.solution.a' | sparkline
+    ▁▁▁▁▁▁▁▁▂▂▂▂▂▂▂▂▂▂▂▂▄▄▄▄▄▄▄▄▄▄▄▆▆▆▆▆▆▆▆▆▆▆▆█████████████████████
+
+    # sparkline of rx[0] values
+    cat 'output/Senate_Votes 115-v2.json' | jq '.solution.rx[0]' | sparkline
+    ██▁██████████████████████████▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+
+Use 'termgraph' to make quick plots in the terminal
+
+    # plot error vs. a across solutions
+    jq -r '. |  "\(.error) \(.solution.a)"' 'output/Senate_Votes 115-v2.json' | termgraph
+
