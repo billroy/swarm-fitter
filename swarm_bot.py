@@ -65,7 +65,7 @@ class SwarmBot():
     def handle_connect(self):
         print(self.now(), 'Connected:', self.name, self.sio.sid, self.sio.reconnection_delay, self.sio.reconnection_delay_max)
         self.log('sio:', dir(self.sio))
-        self.send_iam('command')
+        self.send_join('command')
         return True
 
     def handle_connect_error(self, msg):
@@ -93,12 +93,12 @@ class SwarmBot():
         self.sio.eio.ping_timeout = 63
         self.sio.emit(channel, msg)
 
-    def send_iam(self, room):
+    def send_join(self, room):
         if not self.name:
-            print('Error: No name in send_iam')
+            print('Error: No name in send_join')
             return
         self.send('command', {
-            'cmd': 'iam',
+            'cmd': 'join',
             'name': self.name,
             'bot': 'v1'
         })
@@ -204,7 +204,7 @@ class SwarmBot():
                             'cmd': 'error',
                             'name': self.name,
                             'error': self.solver.minimum_error
-                        });
+                        })
 
             self.sio.sleep(.020)
 
@@ -215,12 +215,14 @@ if __name__ == '__main__':
     parser.add_argument('--update_interval', default=2, type=int)
     parser.add_argument('--url', default='http://localhost:5000')
     parser.add_argument('--workers', default=1, type=int)
+    parser.add_argument('--swarm_worker', default='swarm_bot.py', type=str)
+
     args = parser.parse_args()
     print('args:', args)
 
     if args.workers > 1:
         workers = []
-        command = ['python3', 'swarm_bot.py']
+        command = ['python3', args.swarm_worker]
         for worker in range(args.workers):
             workers.append(Popen(command, stdout=DEVNULL, stderr=DEVNULL))
             for worker in workers:

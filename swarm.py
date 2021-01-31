@@ -91,7 +91,7 @@ class SwarmBoss():
 
     def start_workers(self, num_workers):
         command = [
-            'python3', 'swarm_bot.py'
+            'python3', self.args.swarm_worker
         ]
         for worker in range(num_workers):
             self.workers.append(Popen(command, stdout=DEVNULL, stderr=DEVNULL))
@@ -116,7 +116,7 @@ class SwarmBoss():
         try:
             print('command:', msg)
 
-            if msg['cmd'] == 'iam':
+            if msg['cmd'] == 'join':
                 if self.args.kill_bots:
                     self.socketio.emit('command', {'cmd': 'quit'}, room=request.sid)
                     return
@@ -251,6 +251,7 @@ if __name__ == '__main__':
     parser.add_argument('--input_file', default='data/degree by family income_6x12.csv')
     parser.add_argument('--port', default=5000, type=int)
     parser.add_argument('--kill_bots', default=0, type=int)
+    parser.add_argument('--swarm_worker', default='swarm_bot.py', type=str)
 
     args = parser.parse_args()
     print('args:', args)
