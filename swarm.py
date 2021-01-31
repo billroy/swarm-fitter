@@ -219,16 +219,17 @@ class SwarmBoss():
         return self.chart_file_name
 
 
-    def solver_task(self):
+    def swarm_task(self):
+
         while True:
-            print(f'solver task {self.best_error} {self.last_best_error}')
+            print(f'swarm task {self.best_error} {self.last_best_error}')
             now = time.time()
             if (now - self.last_update_time) > args.update_interval:
-                print(f'solver task timer fired {self.best_error} {self.last_best_error}')
+                print(f'swarm task timer fired {self.best_error} {self.last_best_error}')
                 self.last_update_time = now
                 if self.best_error != None and (self.last_best_error == None or self.best_error < self.last_best_error):
                     self.last_best_error = self.best_error
-                    print(f'sending updated solution: {self.best_error}')
+                    print(f'swarm task: sending updated solution: {self.best_error}')
                     self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
                     self.log_solution()
                     if self.update_chart():
@@ -259,8 +260,8 @@ if __name__ == '__main__':
     boss = SwarmBoss(args)
 
     # start the 1Hz thread
-    solver_thread = threading.Thread(target=boss.solver_task)
-    solver_thread.start()
+    swarm_thread = threading.Thread(target=boss.swarm_task)
+    swarm_thread.start()
 
     # run the server (never returns)
     if os.environ.get('PORT'):
