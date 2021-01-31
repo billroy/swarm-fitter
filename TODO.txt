@@ -1,0 +1,22 @@
+Swarm Solver Work List
+
+- bug: random start race condition
+    how does update_solution interact with random_starts in progress?
+    ignore update solution if random_start is in progress?
+
+- too much information for one screen
+    - tabbed interface 
+    - tab per chart
+    - tabs with tables for data, fitted, model parameters
+
+- chart of error descent vs. solution number
+- step back/forth through seen charts
+
+- data editor
+- job submission interface
+
+- UI to kill bots (zombie bot processes)
+- UI to start bots
+- UI to reset bots to work on new problem
+    - stop / reset? / job_data ...
+
