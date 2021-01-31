@@ -179,7 +179,7 @@ class SwarmBot():
         while True:
             if self.running:
 
-                # advance our local solution
+                # imperative 1: advance our local solution
                 t1 = time.time()
                 iterations = 10
                 random.seed()
@@ -187,16 +187,16 @@ class SwarmBot():
                 now = time.time()
                 print(f'{self.name} iterations/sec:{iterations/(now-t1)} error {self.solver.minimum_error}')
 
-                # if a better solution has arrived from the swarm, switch to it
+                # imperative 2: if a better solution has arrived from the swarm, switch to it
                 if self.solution_update != None and not self.in_random_start:
-                    print(f'solver_task: updating solution {self.solution_update}')
+                    #print(f'solver_task: checking solution update {self.solution_update}')
                     if self.solution_update['solution']['error'] < self.solver.minimum_error:
                         print(f'updating solution from server')
                         self.solver.update_solution(self.solution_update['solution'])
                         self.solution_update = None
                         self.last_update_time = now
 
-                # periodically update the swarm director with our local solution's minimum error
+                # imperative 3: periodically update the swarm director with our local solution's minimum error
                 elif now - self.last_update_time > self.update_interval:
                     if self.last_best_error == None or self.solver.minimum_error < self.last_best_error:
                         self.last_update_time = now

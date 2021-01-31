@@ -179,7 +179,7 @@ class SwarmBoss():
         fig = plt.figure()
         fig.set_size_inches(14, 14, forward=True)
         fig.subplots_adjust(hspace=.3)
-        fig.suptitle(f'Swarm solution {self.chart_number}: error={self.solution["error"]} a={solution["a"]}', fontsize='xx-large')
+        fig.suptitle(f'Solution {self.chart_number}: error={self.solution["error"]} a={solution["a"]}', fontsize='xx-large')
         #loc = plticker.MultipleLocator(base=30)
 
         # column analysis
@@ -228,7 +228,7 @@ class SwarmBoss():
             #print(f'swarm task: best_error={self.best_error} last_best_error={self.last_best_error}')
             now = time.time()
             if (now - self.last_update_time) > args.update_interval:
-                print(f'swarm task update timer fired best_error={self.best_error} last_best_error={self.last_best_error}')
+                #print(f'swarm task epoch timer fired best_error={self.best_error} last_best_error={self.last_best_error}')
                 self.last_update_time = now
                 if self.best_error != None and (self.last_best_error == None or self.best_error < self.last_best_error):
                     self.last_best_error = self.best_error
