@@ -114,7 +114,6 @@ class SwarmBot():
     
     def _handle_command(self, msg):
 
-        #self.log('handle_lobby')
         print(self.now(), 'handle_command:', self.name, msg['cmd'], msg)
 
         if msg['cmd'] == 'update_job_data':
@@ -180,15 +179,16 @@ class SwarmBot():
         while True:
             if self.running:
 
+                # advance our local solution
                 t1 = time.time()
                 iterations = 10
                 random.seed()
                 self.solver.solve(iterations=iterations)
-                t2 = time.time()
-                print(f'{self.name} iterations/sec:{iterations/(t2-t1)} error {self.solver.minimum_error}')
-
                 now = time.time()
-                if self.solution_update != None:
+                print(f'{self.name} iterations/sec:{iterations/(now-t1)} error {self.solver.minimum_error}')
+
+                # if a better solution has arrived from the swarm, switch to it
+                if self.solution_update != None and not self.in_random_start:
                     print(f'solver_task: updating solution {self.solution_update}')
                     if self.solution_update['solution']['error'] < self.solver.minimum_error:
                         print(f'updating solution from server')
@@ -196,6 +196,7 @@ class SwarmBot():
                         self.solution_update = None
                         self.last_update_time = now
 
+                # periodically update the swarm director with our local solution's minimum error
                 elif now - self.last_update_time > self.update_interval:
                     if self.last_best_error == None or self.solver.minimum_error < self.last_best_error:
                         self.last_update_time = now

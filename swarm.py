@@ -109,14 +109,15 @@ class SwarmBoss():
 
     # socket event handlers
     def handle_connect(self):
-        print(datetime.now(), 'connect::', request.sid, request.host_url, request.headers, request.remote_addr, request.remote_user)
+        #print(datetime.now(), 'connect::', request.sid, request.host_url, request.headers, request.remote_addr, request.remote_user)
+        print(datetime.now(), 'connect::', request.sid)
 
 
     def handle_command(self, msg):
         try:
-            print('command:', msg)
 
             if msg['cmd'] == 'join':
+                print(f'join command: {msg}, sid={request.sid}')
                 if self.args.kill_bots:
                     self.socketio.emit('command', {'cmd': 'quit'}, room=request.sid)
                     return
@@ -127,15 +128,17 @@ class SwarmBoss():
                     self.socketio.emit('command', {'cmd': 'random_start'}, room=request.sid)
 
             elif msg['cmd'] == 'error':
+                print('command:', msg)
                 print(f'error: best_error: {self.best_error}')
                 self.socketio.emit('error', {'cmd': 'error', 'name': msg['name'], 'error': msg['error']})
                 if self.best_error == None or msg['error'] < self.best_error:
-                    print(f"new best_error candidate: {msg['error']}")
+                    print(f"requesting solution for new best_error candidate: {msg['error']}")
                     self.socketio.emit('command', {'cmd': 'send_solution'}, room=request.sid)
                 else:
                     print(f'ignoring inferior error: {self.best_error} {msg["error"]}')
             
             elif msg['cmd'] == 'solution':
+                print(f'command: {msg["cmd"]} error={msg["error"]}')
                 if self.best_error == None or msg['error'] < self.best_error:
                     self.best_error = msg['error']
 
@@ -215,17 +218,17 @@ class SwarmBoss():
         plt.savefig('output/' + self.chart_file_name)
         plt.close()
         t_end = time.time()
-        print(f'chart update time: {t_end-t_start} {self.chart_file_name}')
+        #print(f'chart update time: {t_end-t_start} {self.chart_file_name}')
         return self.chart_file_name
 
 
     def swarm_task(self):
 
         while True:
-            print(f'swarm task {self.best_error} {self.last_best_error}')
+            #print(f'swarm task: best_error={self.best_error} last_best_error={self.last_best_error}')
             now = time.time()
             if (now - self.last_update_time) > args.update_interval:
-                print(f'swarm task timer fired {self.best_error} {self.last_best_error}')
+                print(f'swarm task update timer fired best_error={self.best_error} last_best_error={self.last_best_error}')
                 self.last_update_time = now
                 if self.best_error != None and (self.last_best_error == None or self.best_error < self.last_best_error):
                     self.last_best_error = self.best_error
@@ -266,8 +269,8 @@ if __name__ == '__main__':
     # run the server (never returns)
     if os.environ.get('PORT'):
         port = int(os.environ.get('PORT'))
-        print('starting with port from environment 0.0.0.0:' + str(port))
+        print('starting web service on port from environment 0.0.0.0:' + str(port))
         boss.socketio.run(boss.app, debug=False, port=port, host='0.0.0.0')
     else:
-        print(f'starting on 0.0.0.0:{args.port}')
+        print(f'starting web service on 0.0.0.0:{args.port}')
         boss.socketio.run(boss.app, debug=False, port=args.port, host='0.0.0.0')
