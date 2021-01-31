@@ -32,6 +32,7 @@ class SwarmBot():
         self.init_socketio()
 
         self.running = False
+        self.in_random_start = False
         self.solver_thread = threading.Thread(target=self.solver_task)
         self.solver_thread.start()
     
@@ -124,6 +125,7 @@ class SwarmBot():
                 self.running = True
 
         elif msg['cmd'] == 'update_solution':
+            if self.in_random_start: return     # ignore solution updates while random starting
             print(f'update_solution: solver.minimum_error: {self.solver.minimum_error}')
             if self.solver.minimum_error == None or msg['solution']['error'] < self.solver.minimum_error:
                 self.solution_update = msg
@@ -132,13 +134,16 @@ class SwarmBot():
             self.running = True
 
         elif msg['cmd'] == 'random_start':
+            if self.in_random_start: return
+            self.in_random_start = True
             self.solver.initialize_starting_point()
             self.send('command', {
                 'cmd': 'error',
                 'name': self.name,
                 'error': self.solver.evaluate()
-            });
+            })
             self.running = True
+            self.in_random_start = False
 
         elif msg['cmd'] == 'send_solution':
             solution = {

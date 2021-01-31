@@ -95,6 +95,7 @@ class SwarmBoss():
         ]
         for worker in range(num_workers):
             self.workers.append(Popen(command, stdout=DEVNULL, stderr=DEVNULL))
+            #self.workers.append(Popen(command))
 
 
     def serve_index(self):
