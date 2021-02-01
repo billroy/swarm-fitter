@@ -97,8 +97,8 @@ class SwarmBoss():
         print(f'resuming from solution in {solution_data_file}')
         with open(solution_data_file, 'r') as f:
             lines = f.read().strip().split('\n')
-        saved_data = json.loads(lines[-1])
-        print(f'resuming from solution: {saved_data}')
+        saved_data = json.loads(lines[self.args.resume_index])
+        print(f'resuming from solution: index={self.args.resume_index} data={saved_data}')
         self.solution = saved_data
         self.best_error = saved_data['error']
 
@@ -274,6 +274,7 @@ if __name__ == '__main__':
     parser.add_argument('--swarm_worker', default='swarm_bot.py', type=str)
     parser.add_argument('--resume', dest='resume', action='store_true')
     parser.set_defaults(resume=False)
+    parser.add_argument('--resume_index', default=-1, type=int)
 
     args = parser.parse_args()
     print('args:', args)
