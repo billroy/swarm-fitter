@@ -187,7 +187,7 @@ class SwarmBoss():
         t_start = time.time()
         self.chart_number += 1
         self.chart_file_name = self.input_file_name.split('/')[-1].replace('.csv', '.png').replace(' ', '_')
-        print(f'updating chart: {self.chart_file_name}\n{self.solution}')
+        print(f'updating chart: {self.chart_file_name}')
         solution = self.solution['solution']
 
         fig = plt.figure()
@@ -269,9 +269,11 @@ if __name__ == '__main__':
     parser.add_argument('--workers', default=0, type=int)
     parser.add_argument('--input_file', default='data/degree by family income_6x12.csv')
     parser.add_argument('--port', default=5000, type=int)
-    parser.add_argument('--kill_bots', default=0, type=int)
+    parser.add_argument('--kill_bots', dest='kill_bots', action='store_true')
+    parser.set_defaults(kill_bots=False)
     parser.add_argument('--swarm_worker', default='swarm_bot.py', type=str)
-    parser.add_argument('--resume', default=0, type=int)
+    parser.add_argument('--resume', dest='resume', action='store_true')
+    parser.set_defaults(resume=False)
 
     args = parser.parse_args()
     print('args:', args)
