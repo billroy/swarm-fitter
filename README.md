@@ -71,3 +71,4 @@ Use 'termgraph' to make quick plots in the terminal
     # plot error vs. a across solutions
     jq -r '. |  "\(.error) \(.solution.a)"' 'output/Senate_Votes 115-v2.json' | termgraph
 
+     jq -r '. |  "\(input_line_number) \(.error)"' 'output/Senate_Votes 115-v2.json' | termgraph

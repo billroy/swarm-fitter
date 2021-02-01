@@ -66,6 +66,9 @@ class SwarmBoss():
         self.last_update_time = time.time()
         self.chart_number = 0
 
+        if args.resume:
+            self.load_last_solution()
+
         self.workers = []
         if args.workers > 0:
             self.start_workers(args.workers)
@@ -87,6 +90,17 @@ class SwarmBoss():
         self.data = self.data.astype("float")
         self.nrow, self.ncol = np.shape(self.data)
         return (self.nrow, self.ncol, self.column_labels.tolist(), self.row_labels.tolist(), self.data.tolist())
+
+
+    def load_last_solution(self):
+        solution_data_file = 'output/' + self.input_file_name.split('/')[-1].replace('.csv', '.json')
+        print(f'resuming from solution in {solution_data_file}')
+        with open(solution_data_file, 'r') as f:
+            lines = f.read().strip().split('\n')
+        saved_data = json.loads(lines[-1])
+        print(f'resuming from solution: {saved_data}')
+        self.solution = saved_data
+        self.best_error = saved_data['error']
 
 
     def start_workers(self, num_workers):
@@ -173,7 +187,7 @@ class SwarmBoss():
         t_start = time.time()
         self.chart_number += 1
         self.chart_file_name = self.input_file_name.split('/')[-1].replace('.csv', '.png').replace(' ', '_')
-        print(f'updating chart: {self.chart_file_name}')
+        print(f'updating chart: {self.chart_file_name}\n{self.solution}')
         solution = self.solution['solution']
 
         fig = plt.figure()
@@ -209,11 +223,12 @@ class SwarmBoss():
             ax2.text(solution['rx'][i], text_base, f'{self.row_labels[i]} ({i} : {rm:0.3f})', props, rotation=90)
 
         # data heatmap
-        ax3 = fig.add_subplot(3,1,3, 
-            title = 'Error Heat Map',
-            xlabel = 'Column',
-            ylabel = 'Row')
-        ax3.imshow(self.data - self.fitted_frequencies, cmap='bwr', interpolation='nearest')
+        if hasattr(self, 'fitted_frequencies'):
+            ax3 = fig.add_subplot(3,1,3, 
+                title = 'Error Heat Map',
+                xlabel = 'Column',
+                ylabel = 'Row')
+            ax3.imshow(self.data - self.fitted_frequencies, cmap='bwr', interpolation='nearest')
     
         plt.savefig('output/' + self.chart_file_name)
         plt.close()
@@ -256,6 +271,7 @@ if __name__ == '__main__':
     parser.add_argument('--port', default=5000, type=int)
     parser.add_argument('--kill_bots', default=0, type=int)
     parser.add_argument('--swarm_worker', default='swarm_bot.py', type=str)
+    parser.add_argument('--resume', default=0, type=int)
 
     args = parser.parse_args()
     print('args:', args)
