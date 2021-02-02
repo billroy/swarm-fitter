@@ -187,6 +187,12 @@ class SwarmBot():
                 now = time.time()
                 print(f'{self.name} iterations/sec:{self.args.iterations/(now-t1)} error {self.solver.minimum_error}')
 
+                #print(f'rx_delta={self.solver.rx_delta}')
+                #print(f'cx_delta={self.solver.cx_delta}')
+                #print(f'rm_delta={self.solver.rm_delta}')
+                #print(f'cm_delta={self.solver.cm_delta}')
+                #print(f'a_delta={self.solver.a_delta}')
+
                 # imperative 2: if a better solution has arrived from the swarm, switch to it
                 if self.solution_update != None and not self.in_random_start:
                     #print(f'solver_task: checking solution update {self.solution_update}')
