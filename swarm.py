@@ -252,7 +252,11 @@ class SwarmBoss():
             e = e[-points:]
             t = t[-points:]
             print(f'ax4: t={t} e={e}')
-            ax4.plot(t, e)
+            e_min = min(e)
+            e_max = max(e)
+            if e_max - e_min > 0:
+                plt.ylim([e_min, e_max])
+                ax4.plot(t, e)
     
         plt.savefig('output/' + self.chart_file_name)
         plt.close()
