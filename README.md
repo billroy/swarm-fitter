@@ -43,6 +43,14 @@ Use 'jq' in --slurp mode to parse the line-by-line json output file
     # show the values of 'a':
     cat 'output/degree by family income_6x12.json' | jq --slurp '.[].solution.a' | sort -n | head
 
+    # find the minimum error in an output/.json file
+    cat 'output/degree by family income_6x12.json' | jq -s 'map(.error) | min'
+    24.305480262687844
+
+    # pluck the json record for the lowest-error solution
+    cat 'output/degree by family income_6x12.json' | jq -s 'min_by(.error)'   
+
+
 Use 'tail' to pluck out a particular solution by line number
 
     # use 'tail' to pluck out the last saved solution and send it to jq to display the error:
@@ -72,3 +80,5 @@ Use 'termgraph' to make quick plots in the terminal
     jq -r '. |  "\(.error) \(.solution.a)"' 'output/Senate_Votes 115-v2.json' | termgraph
 
      jq -r '. |  "\(input_line_number) \(.error)"' 'output/Senate_Votes 115-v2.json' | termgraph
+
+
