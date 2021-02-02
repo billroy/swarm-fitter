@@ -198,7 +198,7 @@ class SwarmBoss():
         fig = plt.figure()
         fig.set_size_inches(14, 14, forward=True)
         fig.subplots_adjust(hspace=.3)
-        fig.suptitle(f'Solution {self.chart_number}: error={self.solution["error"]} a={solution["a"]}', fontsize='xx-large')
+        fig.suptitle(f'Analysis of {self.input_file_name} ({self.nrow} X {self.ncol})\nSolution {self.chart_number}: error={self.solution["error"]} a={solution["a"]}', fontsize='xx-large')
         #loc = plticker.MultipleLocator(base=30)
 
         # column analysis
