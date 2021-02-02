@@ -61,6 +61,7 @@ class SwarmBoss():
         self.job_data = self.read_csv_data(args.input_file)
         print(f'job_data: {self.job_data}')
         self.solution = None
+        self.solutions = []
         self.best_error = None
         self.last_best_error = None
         self.last_update_time = time.time()
@@ -100,6 +101,8 @@ class SwarmBoss():
         saved_data = json.loads(lines[self.args.resume_index])
         print(f'resuming from solution: index={self.args.resume_index} data={saved_data}')
         self.solution = saved_data
+        self.solution['time'] = time.time()
+        self.solutions.append(self.solution)
         self.best_error = saved_data['error']
 
 
@@ -159,6 +162,8 @@ class SwarmBoss():
                     # pull off the fitted_frequencies and delete them; the workers don't need it, and it's big
                     self.fitted_frequencies = msg['solution']['fitted_frequencies']
                     self.solution = msg
+                    self.solution['time'] = time.time()
+                    self.solutions.append(self.solution)
                     del self.solution['solution']['fitted_frequencies']
 
                     # could immediately update the other workers here
@@ -197,7 +202,7 @@ class SwarmBoss():
         #loc = plticker.MultipleLocator(base=30)
 
         # column analysis
-        ax = fig.add_subplot(3,1,1,
+        ax = fig.add_subplot(4,1,1,
             title = 'Column Coordinates and Multipliers',
             xlabel = 'Column Coordinate',
             ylabel = 'Column Multiplier')
@@ -210,7 +215,7 @@ class SwarmBoss():
             ax.text(solution['cx'][i], text_base, f'{self.column_labels[i]} ({i} : {cm:0.3f})', props, rotation=90)
 
         # row analysis
-        ax2 = fig.add_subplot(3,1,2, 
+        ax2 = fig.add_subplot(4,1,2, 
             title = 'Row Coordinates and Multipliers',
             xlabel = 'Row Coordinate',
             ylabel = 'Row Multiplier')
@@ -224,11 +229,30 @@ class SwarmBoss():
 
         # data heatmap
         if hasattr(self, 'fitted_frequencies'):
-            ax3 = fig.add_subplot(3,1,3, 
+            ax3 = fig.add_subplot(4,1,3, 
                 title = 'Error Heat Map',
                 xlabel = 'Column',
                 ylabel = 'Row')
             ax3.imshow(self.data - self.fitted_frequencies, cmap='bwr', interpolation='nearest')
+
+        # error vs. time
+        if len(self.solutions):
+            iterations_to_plot = 6
+            ax4 = fig.add_subplot(4,1,4, 
+                title = f'Error vs. Time for past {iterations_to_plot} solutions',
+                xlabel = 'Time (seconds since start)',
+                ylabel = 'Error')
+            e = []
+            t = []
+            t0 = self.solutions[0]['time']
+            for i in range(len(self.solutions)):
+                t.append(self.solutions[i]['time'] - t0)
+                e.append(self.solutions[i]['error'])
+            points = min(iterations_to_plot, len(self.solutions))
+            e = e[-points:]
+            t = t[-points:]
+            print(f'ax4: t={t} e={e}')
+            ax4.plot(t, e)
     
         plt.savefig('output/' + self.chart_file_name)
         plt.close()
