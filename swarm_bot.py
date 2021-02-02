@@ -15,9 +15,10 @@ from frequencytablesolver import FrequencyTableSolver
 
 class SwarmBot():
 
-    def __init__(self, url='localhost:5000'):
+    def __init__(self, args, url='localhost:5000'):
         #print('Starting bot...')
         random.seed()
+        self.args = args
         self.server_url = url
         self.verbose = True
         self.name = 'Solver-' + socket.gethostname() + '-' + str(random.randrange(1000))
@@ -181,11 +182,10 @@ class SwarmBot():
 
                 # imperative 1: advance our local solution
                 t1 = time.time()
-                iterations = 10
                 random.seed()
-                self.solver.solve(iterations=iterations)
+                self.solver.solve(iterations=self.args.iterations)
                 now = time.time()
-                print(f'{self.name} iterations/sec:{iterations/(now-t1)} error {self.solver.minimum_error}')
+                print(f'{self.name} iterations/sec:{self.args.iterations/(now-t1)} error {self.solver.minimum_error}')
 
                 # imperative 2: if a better solution has arrived from the swarm, switch to it
                 if self.solution_update != None and not self.in_random_start:
@@ -216,6 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('--update_interval', default=2, type=int)
     parser.add_argument('--url', default='http://localhost:5000')
     parser.add_argument('--workers', default=1, type=int)
+    parser.add_argument('--iterations', default=10, type=int)
     parser.add_argument('--swarm_worker', default='swarm_bot.py', type=str)
 
     args = parser.parse_args()
@@ -230,5 +231,5 @@ if __name__ == '__main__':
                 worker.wait()
 
     else:
-        swarm_bot = SwarmBot(url=args.url)
+        swarm_bot = SwarmBot(args, url=args.url)
         #sio.wait()
