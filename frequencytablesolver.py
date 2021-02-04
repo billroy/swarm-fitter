@@ -96,7 +96,7 @@ class FrequencyTableSolver():
         print("total", self.total)
         self.rm = np.sum(self.data, 1) / self.total**.5
         self.cm = np.sum(self.data, 0) / self.total **.5
-        self.zero_correlation_model = np.outer(self.rm, self.cm)
+        #self.zero_correlation_model = np.outer(self.rm, self.cm)
 
         # Coordinates: Use random coordinates in the range + or = 1
         self.rx = 2.*(np.random.rand(self.nrow) - .5)
