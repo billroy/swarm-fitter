@@ -169,6 +169,10 @@ class SwarmBoss():
                     # could immediately update the other workers here
                     #self.socketio.emit('command', {'cmd': 'update_solution', 'solution': self.solution}, broadcast=True)
 
+            elif msg['cmd'] == 'perturb':
+                self.socketio.emit('command', {'cmd': 'perturb', 'proportion': msg['proportion']}, broadcast=True)
+                 
+
         except Exception as e:
             print('exception in dispatch_command')
             print(str(e))

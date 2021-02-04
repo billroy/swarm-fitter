@@ -162,6 +162,9 @@ class SwarmBot():
             #print(f'sending solution: {solution}')
             self.send('command', solution)
 
+        elif msg['cmd'] == 'perturb':
+            self.solver.perturb_solution(msg)
+
         elif msg['cmd'] == 'run':
             self.running = True
 

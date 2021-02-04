@@ -70,8 +70,8 @@ class FrequencyTableSolver():
                 'rm': self.rm.tolist(),
                 'a': self.a,
                 'error': self.evaluate(),
-                'data': self.data.tolist(),
-                'fitted_frequencies': self.fitted_frequencies.tolist()
+                'data': self.data.tolist()
+                #'fitted_frequencies': self.fitted_frequencies.tolist()
             }) + '\n')
 
 
@@ -80,12 +80,14 @@ class FrequencyTableSolver():
             solution = json.loads(file.read().strip().split('\n')[index])
         return solution
 
+
     def update_job_data(self, update):
         self.nrow = update[0]
         self.ncol = update[1]
         self.column_labels = np.array(update[2])
         self.row_labels = np.array(update[3])
         self.data = np.array(update[4])
+
 
     def get_random_starting_point(self):
         # Multipliers
@@ -302,6 +304,22 @@ class FrequencyTableSolver():
         self.rm = np.array(msg['solution']['rm'])
         self.cm = np.array(msg['solution']['cm'])
         self.a = msg['solution']['a']
+        self.evaluate()
+
+
+    def perturb_array(self, array, proportion):
+        perturbation = array * (np.random.random(len(array)) - .5) * proportion
+        print(f'perturbing: {array} {perturbation}')
+        return array + perturbation
+
+
+    def perturb_solution(self, msg):
+        print(f'perturb solution: {msg}')
+        self.rx = self.perturb_array(self.rx, msg['proportion'])
+        self.cx = self.perturb_array(self.cx, msg['proportion'])
+        self.rm = self.perturb_array(self.rm, msg['proportion'])
+        self.cm = self.perturb_array(self.cm, msg['proportion'])
+        self.a  = self.perturb_array([self.a], msg['proportion'])[0]
         self.evaluate()
 
 

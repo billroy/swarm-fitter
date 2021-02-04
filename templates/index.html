@@ -160,11 +160,9 @@ select {
             </div>
         </div>
         <div id='right_header' class='col'>
-<!--
-            <div v-if='0' class='btn-group btn-group-sm'>
-                <button type='button' class='btn btn-secondary btn-sm' v-on:click='logOut'>Logout</button>
+            <div class='btn-group btn-group-sm'>
+                <button type='button' class='btn btn-secondary btn-sm' v-on:click='perturb'>Perturb</button>
             </div>
--->
         </div>
     </div>
 
@@ -345,6 +343,9 @@ select {
                     case 'random_start':
                         break;
 
+                    case 'perturb':
+                        break;
+
                     default:
                         console.log('unknown command:', msg)
                 }
@@ -368,6 +369,10 @@ select {
             });
         },
         methods: {
+            perturb: function() {
+                const proportion = 0.05;
+                Pushit.send('command', {'cmd': 'perturb', 'proportion': proportion})
+            }
         },
         watch: {
         }
