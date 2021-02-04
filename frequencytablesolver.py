@@ -1,7 +1,6 @@
  # Simple Solver for a Small Rectangular Table of Frequencies in .csv format, using Chi-Square as the Objective Fiunction
 from datetime import datetime
 import json
-import multiprocessing as mp
 import numpy as np
 import random
 import time
@@ -351,115 +350,6 @@ class FrequencyTableSolver():
         return (self.minimum_error, self.save_solution())
 
 
-    def twiddle_one_parameter(self, parameter):
-        #print('twiddle:', parameter[2], parameter[1])
-        #return parameter[0](parameter[1])
-        parameter[0](parameter[1])
-
-
-    def update_parameter(self, update):
-        if update[0] == 'rx':
-            self.rx[update[1]] = update[2]
-            self.rx_delta[update[1]] = update[3]
-        elif update[0] == 'cx':
-            self.cx[update[1]] = update[2]
-            self.cx_delta[update[1]] = update[3]
-        elif update[0] == 'rm':
-            self.rm[update[1]] = update[2]
-            self.rm_delta[update[1]] = update[3]
-        elif update[0] == 'cm':
-            self.cm[update[1]] = update[2]
-            self.cm_delta[update[1]] = update[3]
-        elif update[0] == 'a':
-            self.a = update[2]
-            self.a_delta = update[3]
-
-
-    def solve_parallel(self, iterations=1):
-        self.t_solve_start = time.time()
-        self.initialize_deltas()
-        self.error_list = []
-        pool = mp.Pool(mp.cpu_count())
-        #pool = mp.Pool(1)
-
-        for self.iteration in range(iterations):
-            self.t_start = time.time()
-            self.minimum_error = self.evaluate()
-            self.update_parameter_list()
-    
-            results = pool.map(self.twiddle_one_parameter, [parameter for parameter in self.parameters])
-            t2 = time.time()
-            #print('pool result:', results)
-            for result in results:
-                self.update_parameter(result)
-            t3 = time.time()
-
-            # update worker processes with new solution
-            self.context = self.save_solution()
-            t4 = time.time()
-            results = pool.map_async(self.restore_solution, (self.context,)).get()
-            t5 = time.time()
-            print(f'solve_parallel tot:{1e6*(t5-self.t_start):.3f} t2:{1e6*(t2-self.t_start):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
-
-            self.error_list.append([self.iteration, self.minimum_error])
-            self.t_end = time.time()
-            if (self.iteration % 100) == 0:
-                self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
-
-        pool.close()
-        pool.join()
-        self.t_solve_end = time.time()
-
-
-    def solve_parallel_2(self, iterations=1, worker_iterations=100, workers=4):
-        self.t_solve_start = time.time()
-        pool = mp.Pool(workers)
-        last_best_result = None
-        cutoff_ratio = .9995
-
-        for self.parallel_iteration in range(iterations):
-            self.t_start = time.time()
-            results = pool.map_async(self.solve, [worker_iterations for i in range(workers)]).get()
-            t2 = time.time()
-            #print('pool2 results:', len(results), type(results), results)
-
-            best_result = None
-            best_result_index = None
-            for i in range(len(results)):
-                if best_result == None or results[i][0] < best_result: 
-                    best_result = results[i][0]
-                    best_result_index = i
-            if best_result == None: raise('noresult')
-            if last_best_result == None: last_best_result = best_result
-            ratio = best_result / last_best_result
-            print(f'best result: {best_result} ratio: {ratio}')
-            last_best_result = best_result
-
-            self.context = results[best_result_index][1]
-            self.restore_solution(self.context)
-            t3 = time.time()
-
-            # update worker processes with new solution
-            t4 = time.time()
-            results = pool.map_async(self.restore_solution, (self.context,)).get()
-            t5 = time.time()
-            print(f'solve_parallel_2 tot us:{1e6*(t5-self.t_start):.3f} t2:{1e6*(t2-self.t_start):.3f} t3:{1e6*(t3-t2):.3f} t4:{1e6*(t4-t3):.3f} t5:{1e6*(t5-t4):.3f}')
-
-            self.error_list.append([self.iteration, self.minimum_error])
-            self.t_end = time.time()
-            if (self.iteration % 1000) == 0:
-                self.show_state(f'Iteration: {self.iteration} dt:{self.t_end-self.t_start:.4f}')
-
-            if self.parallel_iteration > 0 and ratio > cutoff_ratio: break
-
-        pool.close()
-        pool.join()
-        self.t_solve_end = time.time()
-        print(f'total iterations: {iterations * worker_iterations}')
-        print(f'elapsed time: {self.t_solve_end-self.t_solve_start}')
-        self.iteration = iterations * worker_iterations
-        print(f'parallel iterations/second: {(iterations * worker_iterations)/(self.t_solve_end-self.t_solve_start):.1f}')
-
 
 if __name__ == "__main__":
 
@@ -474,7 +364,6 @@ if __name__ == "__main__":
         pr = cProfile.Profile()
         pr.enable()
         solver.solve(iterations=1000)
-        #solver.solve_parallel(iterations=1000)
         pr.disable()
         s = io.StringIO()
         ps = pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE)
@@ -482,8 +371,6 @@ if __name__ == "__main__":
         print(s.getvalue())
     else:
         solver.solve(iterations=100*150)
-        #solver.solve_parallel(iterations=1000)
-        #solver.solve_parallel_2(iterations=100, worker_iterations=150, workers=mp.cpu_count())
 
     solver.show_state('ENDING POINT SOLUTION')
 
