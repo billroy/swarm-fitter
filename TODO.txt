@@ -1,15 +1,12 @@
 Swarm Solver Work List
 
-- bug: random start race condition
-    how does update_solution interact with random_starts in progress?
-    ignore update solution if random_start is in progress?
+- remove hinting for evaluate()
 
-- too much information for one screen
+- web console has too much information for one screen
     - tabbed interface 
     - tab per chart
     - tabs with tables for data, fitted, model parameters
 
-- chart of error descent vs. solution number
 - step back/forth through seen charts
 
 - data editor

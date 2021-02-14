@@ -1,9 +1,11 @@
 
+adjustText==0.7.3
 Flask==1.1.2
 Flask-SocketIO==5.0.1
 gevent==20.12.1
 gevent-websocket==0.10.1
 greenlet==0.4.17
+matplotlib==3.3.3
 numpy==1.19.5
 pyfiglet==0.8.post1
 python-dateutil==2.8.1

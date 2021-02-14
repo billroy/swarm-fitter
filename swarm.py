@@ -1,5 +1,6 @@
 # Swarm solver boss
 
+from adjustText import adjust_text
 import argparse
 from datetime import datetime
 from flask import Flask, Response, redirect, render_template, request, session, send_file
@@ -214,9 +215,11 @@ class SwarmBoss():
         props = {'color':'black'}
         bottom, top = ax.get_ylim()
         text_base = bottom + 0.05 * (top-bottom)
+        labels = []
         for i in range(len(solution['cx'])):
             cm = solution['cm'][i]
-            ax.text(solution['cx'][i], text_base, f'{self.column_labels[i]} ({i} : {cm:0.3f})', props, rotation=90)
+            labels.append(ax.text(solution['cx'][i], text_base, f'{self.column_labels[i]} ({i} : {cm:0.3f})', props, rotation=90))
+        if self.args.adjust_text: adjust_text(labels, arrowprops=dict(arrowstyle='->', color='red'))
 
         # row analysis
         ax2 = fig.add_subplot(4,1,2, 
@@ -227,9 +230,11 @@ class SwarmBoss():
         props = {'color':'black'}
         bottom, top = ax2.get_ylim()
         text_base = bottom + 0.05 * (top-bottom)
+        labels2 = []
         for i in range(len(solution['rx'])):
             rm = solution['rm'][i]
-            ax2.text(solution['rx'][i], text_base, f'{self.row_labels[i]} ({i} : {rm:0.3f})', props, rotation=90)
+            labels2.append(ax2.text(solution['rx'][i], text_base, f'{self.row_labels[i]} ({i} : {rm:0.3f})', props, rotation=90))
+        if self.args.adjust_text: adjust_text(labels2, arrowprops=dict(arrowstyle='->', color='red'))
 
         # data heatmap
         if hasattr(self, 'fitted_frequencies'):
@@ -255,7 +260,6 @@ class SwarmBoss():
             points = min(iterations_to_plot, len(self.solutions))
             e = e[-points:]
             t = t[-points:]
-            print(f'ax4: t={t} e={e}')
             e_min = min(e)
             e_max = max(e)
             if e_max - e_min > 0:
@@ -265,7 +269,7 @@ class SwarmBoss():
         plt.savefig('output/' + self.chart_file_name)
         plt.close()
         t_end = time.time()
-        #print(f'chart update time: {t_end-t_start} {self.chart_file_name}')
+        print(f'chart update time: {t_end-t_start} {self.chart_file_name}')
         return self.chart_file_name
 
 
@@ -307,6 +311,8 @@ if __name__ == '__main__':
     parser.add_argument('--resume', dest='resume', action='store_true')
     parser.set_defaults(resume=False)
     parser.add_argument('--resume_index', default=-1, type=int)
+    parser.add_argument('--adjust_text', dest='adjust_text', action='store_true')
+    parser.set_defaults(adjust_text=False)
 
     args = parser.parse_args()
     print('args:', args)
